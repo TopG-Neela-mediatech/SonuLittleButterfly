@@ -3,45 +3,52 @@ using System.Collections;
 using UnityEngine;
 
 
-namespace tmkoc.temp
+namespace tmkoc.butterfly
 {
     public class StoryController : MonoBehaviour
     {
         [Header("Story Data")]
         [SerializeField] private StoryData storyData;
 
-       /* [Header("Root Canvas Group — assign the CanvasGroup on the story prefab root")]
-        [SerializeField] private CanvasGroup rootCanvasGroup;*/
-
         [Header("Sub-components (auto-found if empty)")]
         [SerializeField] private StoryUI       storyUI;
         [SerializeField] private StoryAnimator storyAnimator;
-       
+
+        [Header("Timing")]
+        [SerializeField] private float minimumSlideDuration = 3f;
+
         public Action OnStoryFinished;
         private int  _slideIndex;
         private bool _isSkipped;
+        private Func<int, float> _narration;
 
         private void Awake()
         {
             if (storyUI       == null) storyUI       = GetComponentInChildren<StoryUI>(true);
             if (storyAnimator == null) storyAnimator = GetComponentInChildren<StoryAnimator>(true);
         }
+
+        /// <summary>Swap the story before activating the canvas. narration(slideIndex) returns the voice clip length or -1.</summary>
+        public void SetStoryData(StoryData data, Func<int, float> narration = null)
+        {
+            storyData = data;
+            _narration = narration;
+        }
+
         private void OnEnable()
         {
             _slideIndex = 0;
             _isSkipped  = false;
-           // if (rootCanvasGroup != null) rootCanvasGroup.alpha = 1f;
             StartCoroutine(PlayRoutine());
         }
         private void OnDisable()
         {
-            StopAllCoroutines();           
+            StopAllCoroutines();
         }
         public void SkipStory()
         {
             if (_isSkipped) return;
             _isSkipped = true;
-          //  if (rootCanvasGroup != null) rootCanvasGroup.alpha = 0f;
             StopAllCoroutines();
             storyAnimator?.StopImmediate();
             RuntimeAudioLoader.Instance?.StopCommonAudioSource();
@@ -55,15 +62,12 @@ namespace tmkoc.temp
             }
             while (_slideIndex < storyData.slides.Length && !_isSkipped)
             {
-                var slide = storyData.slides[_slideIndex];              
+                var slide = storyData.slides[_slideIndex];
                 storyUI?.ShowSlide(slide);
                 storyAnimator?.AnimateSlideIn(slide.transitionIn);
-                float dur = 3f;//GameManager.Instance.SoundManager.PlayIntroSlide(_slideIndex);
-                if (dur < 2)
-                {
-                    dur = 3;
-                }
-                yield return new WaitForSeconds(dur+0.5f);
+                float dur = _narration != null ? _narration(_slideIndex) : -1f;
+                if (dur < 2f) dur = Mathf.Max(minimumSlideDuration, slide.displayDuration);
+                yield return new WaitForSeconds(dur + 0.5f);
                 if (_isSkipped) break;
                 storyAnimator?.AnimateSlideOut(slide.transitionOut);
                 yield return new WaitForSeconds(0.5f);

@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-namespace tmkoc.temp
+namespace tmkoc.butterfly
 {
     /// <summary>Updates Canvas elements per slide. Background, foreground, caption.</summary>
     public class StoryUI : MonoBehaviour

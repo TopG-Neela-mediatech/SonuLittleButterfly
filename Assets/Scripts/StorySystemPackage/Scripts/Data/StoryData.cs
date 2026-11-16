@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace tmkoc.temp
+namespace tmkoc.butterfly
 {
     public enum SlideTransitionType { FadeIn, FadeOut, SlideFromRight, SlideFromLeft, ScaleUp, Instant }
 

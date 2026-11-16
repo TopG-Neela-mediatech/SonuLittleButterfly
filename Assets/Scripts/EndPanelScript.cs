@@ -1,115 +1,59 @@
-using DG.Tweening;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using System;
+using UnityEngine.UI;
 
-
-namespace tmkoc.temp
+namespace tmkoc.butterfly
 {
+    /// <summary>
+    /// Bridge to the shared Playschool win/lose popup (WinLosePanelCanvas). The popup is normally spawned
+    /// through PlayschoolCommon (which lives in PlayschoolMainScene); when the gameplay scene is opened
+    /// directly in the editor the fallback prefab is instantiated instead so the flow still works.
+    /// </summary>
     public class EndPanelScript : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] private Image winChrachterImage;
-        [SerializeField] private Image loseChrachterImage;
-        [SerializeField] private RectTransform winPanel;
-        [SerializeField] private RectTransform losePanel;
-        [SerializeField] private Button retryButton;
-        [SerializeField] private Button nextButton;
+        [SerializeField] private GameObject winLosePanelFallbackPrefab;
         [SerializeField] private Button[] homeButtons;
-        [SerializeField] private RectTransform winRaysT;
-        [SerializeField] private RectTransform loseRaysT;
 
-        [Header("Slide Anim")]
-        [SerializeField] private Vector2 onScreenAnchoredPos = Vector2.zero;
-        [SerializeField] private float slideInDuration = 0.9f;
-        [SerializeField] private float slideOutDuration = 0.5f;
-        [SerializeField] private Ease slideInEase = Ease.OutBack;
-        [SerializeField] private Ease slideOutEase = Ease.InBack;
-
-
-        public bool IsShowing => (winPanel != null && winPanel.gameObject.activeSelf) || (losePanel != null && losePanel.gameObject.activeSelf);
-
-        private RectTransform activePanel;
-        private Button activeButton;
+        public bool IsShowing { get; private set; }
 
         private void Awake()
         {
-            winPanel.gameObject.SetActive(false);
-            losePanel.gameObject.SetActive(false);
-            retryButton.gameObject.SetActive(false);
-            nextButton.gameObject.SetActive(false);
-            retryButton.onClick.AddListener(OnButtonClicked);
-            nextButton.onClick.AddListener(OnButtonClicked);
-        }
-        private void Start()
-        {
-            foreach (var homeButton in homeButtons)
-            {
-                homeButton.onClick.AddListener(() => SceneManager.LoadScene(TMKOCPlaySchoolConstants.TMKOCPlayMainMenu));
-            }
-        }
-        private void OnDisable()
-        {
-            winPanel.DOKill();
-            losePanel.DOKill();
+            if (PlayschoolCommon.Instance != null)
+                PlayschoolCommon.Instance.SpawnplayschoolWinLosePanel();
+            else if (WinLosePanelScript.Instance == null && winLosePanelFallbackPrefab != null)
+                Instantiate(winLosePanelFallbackPrefab);
         }
 
-        // Public API
+        private void Start()
+        {
+            if (homeButtons == null) return;
+            foreach (var homeButton in homeButtons)
+                if (homeButton != null)
+                    homeButton.onClick.AddListener(() => SceneManager.LoadScene(TMKOCPlaySchoolConstants.TMKOCPlayMainMenu));
+        }
+
         public void ShowWin()
         {
-            Show(winPanel, nextButton); 
-            //Sprite winSprite = GameManager.Instance.LevelManager.CurrentLevelData.winPanelSprite;
-          //  winChrachterImage.sprite = winSprite;
-            nextButton.onClick.AddListener(()=>GameManager.Instance.LevelManager.LoadNextLevel());
-            RotateRaysLoop(winRaysT, 8f, true);          
+            if (WinLosePanelScript.Instance == null)
+            {
+                Debug.LogWarning("WinLosePanelScript missing; loading next level directly.");
+                GameManager.Instance.LevelManager.LoadNextLevel();
+                return;
+            }
+            IsShowing = true;
+            WinLosePanelScript.Instance.ShowNextLevelPopUp(() => { IsShowing = false; GameManager.Instance.LevelManager.LoadNextLevel(); });
         }
 
         public void ShowLose()
         {
-            Show(losePanel, retryButton);
-           // Sprite loseSprite = GameManager.Instance.LevelManager.CurrentLevelData.losePanelSprite;
-           // loseChrachterImage.sprite = loseSprite;
-           // retryButton.onClick.AddListener(() => GameManager.Instance.LevelManager.StartLevel());
-            RotateRaysLoop(loseRaysT, 8f, false);
-        }
-
-        private void Show(RectTransform panel, Button button)
-        {
-           // GameManager.Instance.SoundManager.StopAllExceptBGM();
-
-            activePanel = panel;
-            activeButton = button;
-
-            panel.gameObject.SetActive(true);
-            panel.DOKill();
-            panel.anchoredPosition = OffScreenPos(panel);
-            panel.DOAnchorPos(onScreenAnchoredPos, slideInDuration)
-                .SetEase(slideInEase)
-                .OnComplete(() => button.gameObject.SetActive(true));
-        }
-
-        // Panel's RectTransform is stretched to the canvas, so its own height is a resolution-independent slide distance.
-        private Vector2 OffScreenPos(RectTransform panel)
-        {
-            return new Vector2(0f, -panel.rect.height);
-        }
-        private void RotateRaysLoop(RectTransform rays, float duration = 8f, bool clockwise = true)
-        {
-            float angle = clockwise ? -360f : 360f;
-            rays.DORotate(new Vector3(0f, 0f, angle), duration, RotateMode.FastBeyond360)
-                .SetEase(Ease.Linear)
-                .SetLoops(-1, LoopType.Incremental)
-                .SetRelative(true);
-        }
-        private void OnButtonClicked()
-        {
-            activeButton.gameObject.SetActive(false);
-
-            activePanel.DOKill();
-            activePanel.DOAnchorPos(OffScreenPos(activePanel), slideOutDuration)
-                .SetEase(slideOutEase)
-                .OnComplete(() => activePanel.gameObject.SetActive(false));
+            if (WinLosePanelScript.Instance == null)
+            {
+                GameManager.Instance.LevelManager.StartLevel();
+                return;
+            }
+            IsShowing = true;
+            WinLosePanelScript.Instance.ShowRetryPopUp(() => { IsShowing = false; GameManager.Instance.LevelManager.StartLevel(); });
         }
     }
 }

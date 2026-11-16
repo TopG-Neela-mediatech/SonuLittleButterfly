@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace tmkoc.temp
+namespace tmkoc.butterfly
 {
     /// <summary>Slide-in and slide-out transitions: Fade, Slide, Scale, Instant.</summary>
     public class StoryAnimator : MonoBehaviour
