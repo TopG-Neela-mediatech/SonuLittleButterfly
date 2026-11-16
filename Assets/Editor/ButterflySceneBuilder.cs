@@ -134,7 +134,7 @@ public static class ButterflySceneBuilder
         var gamePanel = Empty(level1, "GamePanel");
         gamePanel.anchorMin = Vector2.zero; gamePanel.anchorMax = new Vector2(1, 0.6f); gamePanel.offsetMin = gamePanel.offsetMax = Vector2.zero;
         var objective = Text(gamePanel, "Objective", "Water the small plant.", 46, HeadingGreen, TextAlignmentOptions.Center); objective.fontStyle = FontStyles.Bold; StretchX(objective.rectTransform, -50, 80, 40); objective.enableAutoSizing = true; objective.fontSizeMin = 28; objective.fontSizeMax = 46;
-        var instruction = Text(gamePanel, "Instruction", "Merge matching items that are next to each other!", 28, SoftGreen, TextAlignmentOptions.Center); StretchX(instruction.rectTransform, -115, 40, 40);
+        var instruction = Text(gamePanel, "Instruction", "Tap or drag two matching items to merge them!", 28, SoftGreen, TextAlignmentOptions.Center); StretchX(instruction.rectTransform, -115, 40, 40);
 
         var goalsRt = Empty(gamePanel, "Goals"); StretchX(goalsRt, -215, 120, 20);
         var hlg = goalsRt.gameObject.AddComponent<HorizontalLayoutGroup>(); hlg.spacing = 16; hlg.childAlignment = TextAnchor.MiddleCenter; hlg.childControlWidth = false; hlg.childControlHeight = false; hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
@@ -153,7 +153,7 @@ public static class ButterflySceneBuilder
         var outline = cellImg.gameObject.AddComponent<Outline>(); outline.effectColor = Hex("#FFB56C"); outline.effectDistance = new Vector2(5, -5); outline.enabled = false;
         cellImg.gameObject.AddComponent<MergeCell>();
         var itemTemplate = BuildItemView(boardArea, "ItemTemplate", 200, true);
-        var hint = Text(gamePanel, "Hint", "Move items next to each other to merge.", 26, HintGreen, TextAlignmentOptions.Center); StretchX(hint.rectTransform, 38, 40, 40); hint.rectTransform.anchorMin = new Vector2(0, 0); hint.rectTransform.anchorMax = new Vector2(1, 0);
+        var hint = Text(gamePanel, "Hint", "Match two items of the same kind to grow them.", 26, HintGreen, TextAlignmentOptions.Center); StretchX(hint.rectTransform, 38, 40, 40); hint.rectTransform.anchorMin = new Vector2(0, 0); hint.rectTransform.anchorMax = new Vector2(1, 0);
 
         var dragLayer = Empty(level1, "DragLayer"); Stretch(dragLayer);
         var flightLayer = Empty(level1, "FlightLayer"); Stretch(flightLayer);

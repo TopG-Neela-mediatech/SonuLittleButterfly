@@ -83,8 +83,8 @@ namespace tmkoc.butterfly
 
             if (levelLabel != null) levelLabel.text = $"LEVEL {index + 1} / {total}";
             if (objectiveText != null) objectiveText.text = def.objective;
-            if (instructionText != null) instructionText.text = "Merge matching items that are next to each other!";
-            if (hintText != null) hintText.text = "Move items next to each other to merge.";
+            if (instructionText != null) instructionText.text = "Tap or drag two matching items to merge them!";
+            if (hintText != null) hintText.text = "Match two items of the same kind to grow them.";
 
             board.Setup(def, theme);
             goalsPanel?.Setup(def.goals, theme, board.FallbackSprite);
@@ -111,7 +111,7 @@ namespace tmkoc.butterfly
 
         private void HandleInvalidMove()
         {
-            if (hintText != null) hintText.text = "Move matching items next to each other first.";
+            if (hintText != null) hintText.text = "Find two matching items to merge.";
             GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Wrong);
         }
 

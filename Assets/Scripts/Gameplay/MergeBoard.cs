@@ -14,6 +14,8 @@ namespace tmkoc.butterfly
     /// - two equal tiers merge only when the cells are orthogonally adjacent; tier 4 never merges further.
     /// The board never spawns extra items: exactly enough tier-1 items for the level goals are placed.
     /// </summary>
+    public enum MergeRule { Anywhere, OrthogonalNeighbours, NeighboursIncludingDiagonal }
+
     public class MergeBoard : MonoBehaviour
     {
         [Header("References")]
@@ -28,6 +30,8 @@ namespace tmkoc.butterfly
         [SerializeField] private float spacing = 12f;
         [SerializeField] private float padding = 18f;
         [SerializeField, Range(0.6f, 1f)] private float itemFill = 0.86f;
+        [Tooltip("Anywhere: any two matching items merge regardless of position. Otherwise they must be neighbours.")]
+        [SerializeField] private MergeRule mergeRule = MergeRule.Anywhere;
 
         public event Action<int, int> OnMerged;          // (newTier, cellIndex)
         public event Action OnInvalidMove;
@@ -95,10 +99,9 @@ namespace tmkoc.butterfly
         {
             for (int i = 0; i < tiles.Length; i++)
             {
-                if (tiles[i] == 0) continue;
-                int right = i + 1, down = i + cols;
-                if (i % cols != cols - 1 && tiles[right] == tiles[i]) { a = i; b = right; return true; }
-                if (down < tiles.Length && tiles[down] == tiles[i]) { a = i; b = down; return true; }
+                if (tiles[i] == 0 || tiles[i] >= 4) continue;
+                for (int j = i + 1; j < tiles.Length; j++)
+                    if (tiles[j] == tiles[i] && IsAdjacent(i, j)) { a = i; b = j; return true; }
             }
             // No adjacent pair: suggest moving an item next to its match.
             for (int i = 0; i < tiles.Length; i++)
@@ -117,9 +120,11 @@ namespace tmkoc.butterfly
 
         private int FindEmptyNeighbour(int index)
         {
+            // orthogonal neighbours first, then diagonal ones when allowed
             int r = index / cols, c = index % cols;
-            int[] dr = { 0, 0, 1, -1 }, dc = { 1, -1, 0, 0 };
-            for (int k = 0; k < 4; k++)
+            int[] dr = { 0, 0, 1, -1, 1, 1, -1, -1 }, dc = { 1, -1, 0, 0, 1, -1, 1, -1 };
+            int count = mergeRule == MergeRule.OrthogonalNeighbours ? 4 : 8;
+            for (int k = 0; k < count; k++)
             {
                 int nr = r + dr[k], nc = c + dc[k];
                 if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
@@ -314,10 +319,15 @@ namespace tmkoc.butterfly
             return -1;
         }
 
+        /// <summary>Whether a and b may merge by position: always (Anywhere), or only as neighbours.</summary>
         private bool IsAdjacent(int a, int b)
         {
+            if (a == b) return false;
+            if (mergeRule == MergeRule.Anywhere) return true;
             int ra = a / cols, ca = a % cols, rb = b / cols, cb = b % cols;
-            return Mathf.Abs(ra - rb) + Mathf.Abs(ca - cb) == 1;
+            int dr = Mathf.Abs(ra - rb), dc = Mathf.Abs(ca - cb);
+            if (mergeRule == MergeRule.NeighboursIncludingDiagonal) return dr <= 1 && dc <= 1;
+            return dr + dc == 1;
         }
 
         /// <summary>Mirrors merge(a,b) from the prototype.</summary>
