@@ -25,6 +25,7 @@ public static class SimulatorUiCheck
         "BGPanel/PlaySchoolBackButton",
         "LevelMain/Level1/GardenView/RestartButton",
         "LevelMain/Level1/GardenView/LevelPill",
+        "LevelMain/Level1/GardenView/RoundDots",
         "LevelMain/Level1/GardenView/CaptionPill",
         "LevelMain/Level1/GamePanel/Objective",
         "LevelMain/Level1/GamePanel/Instruction",

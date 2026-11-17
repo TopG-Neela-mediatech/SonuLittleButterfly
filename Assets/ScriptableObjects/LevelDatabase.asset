@@ -77,170 +77,136 @@ MonoBehaviour:
     - {fileID: 21300000, guid: 93635f4b7af87cf4cae23c143336a20b, type: 3}
     tint: {r: 0.95686275, g: 0.62352943, b: 0.64705884, a: 1}
     stageEndStory: {fileID: 11400000, guid: 18ba4b09a83fc37438dacc5b4ae3a988, type: 2}
-  levels:
-  - objective: Water the small plant.
+  mainLevels:
+  - title: Grow a healthy leaf!
     theme: 0
-    columns: 3
-    rows: 3
-    goals:
-    - tier: 2
-      count: 1
-    isTutorial: 1
-  - objective: Give the plant more water.
-    theme: 0
-    columns: 3
-    rows: 3
-    goals:
-    - tier: 2
-      count: 2
-    isTutorial: 0
-  - objective: Help the plant grow healthy leaves.
-    theme: 0
-    columns: 3
-    rows: 3
-    goals:
-    - tier: 3
-      count: 1
-    isTutorial: 0
-  - objective: Finish preparing the butterfly's leaf home.
-    theme: 0
-    columns: 3
-    rows: 4
-    goals:
-    - tier: 4
-      count: 1
-    isTutorial: 0
-  - objective: Feed the baby caterpillar.
+    subLevels:
+    - objective: Water the small plant.
+      theme: 0
+      columns: 3
+      rows: 3
+      goals:
+      - tier: 2
+        count: 1
+      isTutorial: 1
+    - objective: Give the plant more water.
+      theme: 0
+      columns: 3
+      rows: 3
+      goals:
+      - tier: 2
+        count: 2
+      isTutorial: 0
+    - objective: Help the plant grow healthy leaves.
+      theme: 0
+      columns: 3
+      rows: 3
+      goals:
+      - tier: 3
+        count: 1
+      isTutorial: 0
+    - objective: Finish the butterfly's leaf home.
+      theme: 0
+      columns: 3
+      rows: 4
+      goals:
+      - tier: 3
+        count: 2
+      isTutorial: 0
+  - title: Feed the hungry caterpillar!
     theme: 1
-    columns: 3
-    rows: 3
-    goals:
-    - tier: 2
-      count: 1
-    isTutorial: 0
-  - objective: Give the caterpillar another meal.
-    theme: 1
-    columns: 3
-    rows: 4
-    goals:
-    - tier: 2
-      count: 2
-    isTutorial: 0
-  - objective: Help the caterpillar grow bigger.
-    theme: 1
-    columns: 3
-    rows: 4
-    goals:
-    - tier: 3
-      count: 1
-    isTutorial: 0
-  - objective: Feed the growing caterpillar.
-    theme: 1
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 3
-      count: 2
-    isTutorial: 0
-  - objective: Prepare a bigger meal.
-    theme: 1
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 4
-      count: 1
-    isTutorial: 0
-  - objective: Complete the caterpillar's final meal.
-    theme: 1
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 4
-      count: 1
-    - tier: 2
-      count: 1
-    isTutorial: 0
-  - objective: Prepare a small twig.
+    subLevels:
+    - objective: Feed the baby caterpillar.
+      theme: 1
+      columns: 3
+      rows: 3
+      goals:
+      - tier: 2
+        count: 2
+      isTutorial: 0
+    - objective: Help the caterpillar grow bigger.
+      theme: 1
+      columns: 3
+      rows: 4
+      goals:
+      - tier: 3
+        count: 1
+      isTutorial: 0
+    - objective: Feed the growing caterpillar.
+      theme: 1
+      columns: 4
+      rows: 4
+      goals:
+      - tier: 3
+        count: 2
+      isTutorial: 0
+    - objective: Give it a big final meal.
+      theme: 1
+      columns: 4
+      rows: 4
+      goals:
+      - tier: 4
+        count: 1
+      isTutorial: 0
+  - title: Build a strong branch!
     theme: 2
-    columns: 3
-    rows: 4
-    goals:
-    - tier: 2
-      count: 2
-    isTutorial: 0
-  - objective: Create a strong branch.
-    theme: 2
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 3
-      count: 1
-    isTutorial: 0
-  - objective: Prepare more support in the garden.
-    theme: 2
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 3
-      count: 2
-    isTutorial: 0
-  - objective: Create a leafy hanging place.
-    theme: 2
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 4
-      count: 1
-    isTutorial: 0
-  - objective: Finish preparing a suitable transformation area.
-    theme: 2
-    columns: 4
-    rows: 5
-    goals:
-    - tier: 4
-      count: 1
-    - tier: 2
-      count: 1
-    isTutorial: 0
-  - objective: Grow the first flower bud.
+    subLevels:
+    - objective: Prepare small twigs.
+      theme: 2
+      columns: 3
+      rows: 4
+      goals:
+      - tier: 2
+        count: 2
+      isTutorial: 0
+    - objective: Make a strong branch.
+      theme: 2
+      columns: 4
+      rows: 4
+      goals:
+      - tier: 3
+        count: 1
+      isTutorial: 0
+    - objective: Build a leafy hanging place.
+      theme: 2
+      columns: 4
+      rows: 4
+      goals:
+      - tier: 4
+        count: 1
+      isTutorial: 0
+  - title: Grow nectar-rich flowers!
     theme: 3
-    columns: 3
-    rows: 4
-    goals:
-    - tier: 2
-      count: 2
-    isTutorial: 0
-  - objective: Help the first flower bloom.
-    theme: 3
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 3
-      count: 1
-    isTutorial: 0
-  - objective: Grow more flowers for the butterfly.
-    theme: 3
-    columns: 4
-    rows: 4
-    goals:
-    - tier: 3
-      count: 2
-    isTutorial: 0
-  - objective: Create a nectar-rich flower.
-    theme: 3
-    columns: 4
-    rows: 5
-    goals:
-    - tier: 4
-      count: 1
-    isTutorial: 0
-  - objective: Complete Sonu's butterfly garden.
-    theme: 3
-    columns: 4
-    rows: 5
-    goals:
-    - tier: 4
-      count: 1
-    - tier: 3
-      count: 1
-    isTutorial: 0
+    subLevels:
+    - objective: Grow the first flower buds.
+      theme: 3
+      columns: 3
+      rows: 4
+      goals:
+      - tier: 2
+        count: 2
+      isTutorial: 0
+    - objective: Help a flower bloom.
+      theme: 3
+      columns: 4
+      rows: 4
+      goals:
+      - tier: 3
+        count: 1
+      isTutorial: 0
+    - objective: Grow more flowers.
+      theme: 3
+      columns: 4
+      rows: 4
+      goals:
+      - tier: 3
+        count: 2
+      isTutorial: 0
+    - objective: Make a nectar-rich flower.
+      theme: 3
+      columns: 4
+      rows: 5
+      goals:
+      - tier: 4
+        count: 1
+      isTutorial: 0

@@ -7,8 +7,11 @@ using UnityEngine.UI;
 namespace tmkoc.butterfly
 {
     /// <summary>
-    /// Level flow: intro story → levels (from the LevelDatabase) → stage gratification + stage story
-    /// at the end of each life-cycle stage → final badge/stars after the last level.
+    /// Level flow (mirrors the HTML prototype): 4 main levels, one per life-cycle stage, each made of 3-4
+    /// sub-levels (rounds) played back to back while the garden grows. After a main level: stage
+    /// transformation → win panel (auto-continues) → the story leading into the next main level → next level.
+    /// Stories only play before a main level (intro before level 1); the last level ends with its story
+    /// and the final badge/stars.
     /// Progress is saved through HelperGameCategoryDataSaver like the other Playschool games.
     /// </summary>
     public class LevelManager : MonoBehaviour
@@ -29,10 +32,21 @@ namespace tmkoc.butterfly
         [Header("Timing")]
         [SerializeField] private float winPanelDelay = 1f;
 
+        /// <summary>Main level index (0..3). This is what is saved.</summary>
         public int currentLevelIndex { get; private set; }
-        public int TotalLevels => database != null && database.levels != null ? database.levels.Length : 0;
-        public LevelDefinition CurrentLevelData => database != null && currentLevelIndex < TotalLevels ? database.levels[currentLevelIndex] : null;
-        public ThemeData CurrentTheme => CurrentLevelData != null ? database.GetTheme(CurrentLevelData.theme) : null;
+        /// <summary>Round inside the current main level (not saved: a main level restarts from its first round).</summary>
+        public int currentSubIndex { get; private set; }
+        public int TotalLevels => database != null ? database.MainCount : 0;
+        public MainLevel CurrentMain => database != null ? database.GetMain(currentLevelIndex) : null;
+        public LevelDefinition CurrentLevelData
+        {
+            get
+            {
+                var main = CurrentMain;
+                return main != null && currentSubIndex < main.SubCount ? main.subLevels[currentSubIndex] : null;
+            }
+        }
+        public ThemeData CurrentTheme => CurrentMain != null ? database.GetTheme(CurrentMain.theme) : null;
         public void StartLevel() => GameManager.Instance.InvokeLevelStart();
 
         private Action pendingStoryCallback;
@@ -51,6 +65,7 @@ namespace tmkoc.butterfly
             GameManager.Instance.OnLevelStart += OnLevelStart;
             GameManager.Instance.OnLevelWin -= OnLevelWin;
             GameManager.Instance.OnLevelWin += OnLevelWin;
+            if (levelController != null) levelController.OnSubLevelComplete += OnSubLevelComplete;
             if (storyController != null)
             {
                 storyController.OnStoryFinished += OnStoryFinished;
@@ -66,32 +81,42 @@ namespace tmkoc.butterfly
         {
             var def = CurrentLevelData;
             if (def == null) return;
-            levelController.InitializeLevel(def, CurrentTheme, currentLevelIndex, TotalLevels);
-            GameManager.Instance.SoundManager?.PlayBGM();
-            if (database.IsStageStart(currentLevelIndex)) GameManager.Instance.SoundManager?.PlayLevelIntro(def.theme);
+            var main = CurrentMain;
+            bool firstRound = currentSubIndex == 0;
+            levelController.InitializeLevel(def, CurrentTheme, currentLevelIndex, TotalLevels, currentSubIndex, main.SubCount, firstRound);
+            if (firstRound)
+            {
+                GameManager.Instance.SoundManager?.PlayBGM();
+                GameManager.Instance.SoundManager?.PlayLevelIntro(main.theme);
+            }
+        }
+
+        /// <summary>A round's goals are all delivered: next round, or the main level is won.</summary>
+        private void OnSubLevelComplete()
+        {
+            var main = CurrentMain;
+            if (main != null && currentSubIndex < main.SubCount - 1)
+            {
+                currentSubIndex++;
+                levelController.PlaySubLevelOutro(() => GameManager.Instance.InvokeLevelStart());
+                return;
+            }
+            GameManager.Instance.InvokeLevelWin();
         }
 
         private void OnLevelWin()
         {
             GameManager.Instance.SoundManager?.PlayLevelOutro();
-            bool stageEnd = database.IsStageEnd(currentLevelIndex);
             bool last = currentLevelIndex >= TotalLevels - 1;
-            if (!stageEnd)
-            {
-                StartCoroutine(LoadWinPanelWithDelay(winPanelDelay));
-                return;
-            }
             var theme = CurrentTheme;
             GameManager.Instance.SoundManager?.PlaySFX(SoundManager.SfxType.StageComplete);
             levelController.PlayStageTransform(() =>
             {
                 GameManager.Instance.InvokeStageComplete(theme.stage);
+                if (!last) { StartCoroutine(LoadWinPanelWithDelay(winPanelDelay)); return; }
+                // the very end: closing story, then the badge and stars, then the win panel
                 var stage = theme.stage;
-                PlayStory(theme.stageEndStory, i => GameManager.Instance.SoundManager?.PlayStageStory(stage, i) ?? -1f, () =>
-                {
-                    if (last) ShowFinalCelebration();
-                    else ShowWinPanel();
-                });
+                PlayStory(theme.stageEndStory, i => GameManager.Instance.SoundManager?.PlayStageStory(stage, i) ?? -1f, ShowFinalCelebration);
             });
         }
 
@@ -153,13 +178,20 @@ namespace tmkoc.butterfly
             HelperGameCategoryDataSaver.LevelCompleted(currentLevelIndex);
         }
 
+        /// <summary>Called by the win panel: the story leading into the next main level, then that level.</summary>
         public void LoadNextLevel()
         {
             if (currentLevelIndex >= TotalLevels) return;
-            if (currentLevelIndex == 0 && introStory != null)
-                PlayStory(introStory, i => GameManager.Instance.SoundManager?.PlayStorySlide(i) ?? -1f, StartLevel);
-            else
-                StartLevel();
+            currentSubIndex = 0;
+            if (currentLevelIndex == 0)
+            {
+                if (introStory != null) PlayStory(introStory, i => GameManager.Instance.SoundManager?.PlayStorySlide(i) ?? -1f, StartLevel);
+                else StartLevel();
+                return;
+            }
+            var prev = database.GetTheme(database.GetMain(currentLevelIndex - 1).theme);
+            var stage = prev.stage;
+            PlayStory(prev.stageEndStory, i => GameManager.Instance.SoundManager?.PlayStageStory(stage, i) ?? -1f, StartLevel);
         }
 
         private void PlayStory(StoryData data, Func<int, float> narration, Action done)
@@ -190,6 +222,7 @@ namespace tmkoc.butterfly
                 GameManager.Instance.OnLevelWin -= OnLevelWin;
             }
             if (storyController != null) storyController.OnStoryFinished -= OnStoryFinished;
+            if (levelController != null) levelController.OnSubLevelComplete -= OnSubLevelComplete;
         }
     }
 }

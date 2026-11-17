@@ -161,6 +161,16 @@ public static class ButterflySceneBuilder
         night.rectTransform.anchorMin = new Vector2(0, -2f); night.rectTransform.anchorMax = new Vector2(1, 1.5f); night.rectTransform.offsetMin = night.rectTransform.offsetMax = Vector2.zero; // garden is 40% of the screen: -1.5 reaches the bottom
         var deliveryTarget = Empty(gardenRt, "DeliveryTarget"); Place(deliveryTarget, new Vector2(0.5f, 0), new Vector2(-170, 150), new Vector2(10, 10));
         var levelPill = Img(gardenRt, "LevelPill", null, Hex("#FFFDF1")); Pill(levelPill, 90); Place(levelPill.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -112), new Vector2(260, 90));
+        var dotsRt = Empty(gardenRt, "RoundDots"); Place(dotsRt, new Vector2(0.5f, 1), new Vector2(0, -178), new Vector2(200, 30));
+        var dotsLayout = dotsRt.gameObject.AddComponent<HorizontalLayoutGroup>(); dotsLayout.spacing = 16; dotsLayout.childAlignment = TextAnchor.MiddleCenter;
+        dotsLayout.childControlWidth = dotsLayout.childControlHeight = false; dotsLayout.childForceExpandWidth = dotsLayout.childForceExpandHeight = false;
+        var roundDots = new Object[4];
+        for (int i = 0; i < 4; i++)
+        {
+            var dot = Img(dotsRt, "Dot" + i, circle, Color.white); dot.raycastTarget = false; dot.rectTransform.sizeDelta = new Vector2(22, 22);
+            var dotShadow = dot.gameObject.AddComponent<Shadow>(); dotShadow.effectColor = new Color(0.25f, 0.4f, 0.28f, 0.35f); dotShadow.effectDistance = new Vector2(0, -3);
+            roundDots[i] = dot;
+        }
         var levelText = Text(levelPill.rectTransform, "LevelText", "LEVEL 1", 36, Hex("#658267"), TextAlignmentOptions.Center); Stretch(levelText.rectTransform, 30, 12);
         var captionPill = Img(gardenRt, "CaptionPill", null, new Color(1f, 0.99f, 0.945f, 0.92f)); Pill(captionPill, 90);
         captionPill.rectTransform.anchorMin = new Vector2(0, 1); captionPill.rectTransform.anchorMax = new Vector2(1, 1); captionPill.rectTransform.offsetMin = new Vector2(200, -285); captionPill.rectTransform.offsetMax = new Vector2(-200, -195);
@@ -219,6 +229,7 @@ public static class ButterflySceneBuilder
 
         SetField(levelController, "garden", garden); SetField(levelController, "board", board); SetField(levelController, "goalsPanel", goalsPanel); SetField(levelController, "flightLayer", flightLayer);
         SetField(levelController, "levelLabel", levelText); SetField(levelController, "objectiveText", objective); SetField(levelController, "instructionText", null); SetField(levelController, "hintText", null); SetField(levelController, "restartButton", restartButton);
+        SetField(levelController, "subDots", roundDots);
         SetField(levelController, "levelPill", levelPill.rectTransform); SetField(levelController, "goalsRect", goalsRt); SetField(levelController, "boardRect", boardImg.rectTransform);
 
         // ---------------------------------------------------------------- final celebration panel
@@ -327,34 +338,31 @@ public static class ButterflySceneBuilder
             Theme(MergeTheme.Twig, LifeStage.Chrysalis, "Build a strong branch!", "Watch carefully as the chrysalis changes.", Hex("#B98760"), new[] { branchArt, branchArt, branchArt, branchArt }, "Tiny Twig", "Small Twig", "Strong Branch", "Leafy Branch"),
             Theme(MergeTheme.Flower, LifeStage.Butterfly, "Grow nectar-rich flowers!", "Help the butterfly stay healthy.", Hex("#F49FA5"), new[] { bushes2Art, bushes2Art, bushesArt, bushesArt }, "Tiny Flower Bud", "Large Flower Bud", "Blooming Flower", "Nectar-Rich Flower"),
         };
-        db.levels = new[]
+        // 4 main levels like the HTML prototype (one per life-cycle stage). Each has 3-4 short rounds;
+        // the garden keeps growing across the rounds and the win panel only shows after the last one.
+        db.mainLevels = new[]
         {
-            // Stage 1 – Egg: water (levels 1-4)
-            L("Water the small plant.", MergeTheme.Water, 3, 3, G(2, 1)) ,
-            L("Give the plant more water.", MergeTheme.Water, 3, 3, G(2, 2)),
-            L("Help the plant grow healthy leaves.", MergeTheme.Water, 3, 3, G(3, 1)),
-            L("Finish preparing the butterfly's leaf home.", MergeTheme.Water, 3, 4, G(4, 1)),
-            // Stage 2 – Caterpillar: leaves (levels 5-10)
-            L("Feed the baby caterpillar.", MergeTheme.Leaf, 3, 3, G(2, 1)),
-            L("Give the caterpillar another meal.", MergeTheme.Leaf, 3, 4, G(2, 2)),
-            L("Help the caterpillar grow bigger.", MergeTheme.Leaf, 3, 4, G(3, 1)),
-            L("Feed the growing caterpillar.", MergeTheme.Leaf, 4, 4, G(3, 2)),
-            L("Prepare a bigger meal.", MergeTheme.Leaf, 4, 4, G(4, 1)),
-            L("Complete the caterpillar's final meal.", MergeTheme.Leaf, 4, 4, G(4, 1), G(2, 1)),
-            // Stage 3 – Chrysalis: twigs (levels 11-15)
-            L("Prepare a small twig.", MergeTheme.Twig, 3, 4, G(2, 2)),
-            L("Create a strong branch.", MergeTheme.Twig, 4, 4, G(3, 1)),
-            L("Prepare more support in the garden.", MergeTheme.Twig, 4, 4, G(3, 2)),
-            L("Create a leafy hanging place.", MergeTheme.Twig, 4, 4, G(4, 1)),
-            L("Finish preparing a suitable transformation area.", MergeTheme.Twig, 4, 5, G(4, 1), G(2, 1)),
-            // Stage 4 – Butterfly: flowers (levels 16-20)
-            L("Grow the first flower bud.", MergeTheme.Flower, 3, 4, G(2, 2)),
-            L("Help the first flower bloom.", MergeTheme.Flower, 4, 4, G(3, 1)),
-            L("Grow more flowers for the butterfly.", MergeTheme.Flower, 4, 4, G(3, 2)),
-            L("Create a nectar-rich flower.", MergeTheme.Flower, 4, 5, G(4, 1)),
-            L("Complete Sonu's butterfly garden.", MergeTheme.Flower, 4, 5, G(4, 1), G(3, 1)),
+            M("Grow a healthy leaf!", MergeTheme.Water,
+                L("Water the small plant.", MergeTheme.Water, 3, 3, G(2, 1)),
+                L("Give the plant more water.", MergeTheme.Water, 3, 3, G(2, 2)),
+                L("Help the plant grow healthy leaves.", MergeTheme.Water, 3, 3, G(3, 1)),
+                L("Finish the butterfly's leaf home.", MergeTheme.Water, 3, 4, G(3, 2))),
+            M("Feed the hungry caterpillar!", MergeTheme.Leaf,
+                L("Feed the baby caterpillar.", MergeTheme.Leaf, 3, 3, G(2, 2)),
+                L("Help the caterpillar grow bigger.", MergeTheme.Leaf, 3, 4, G(3, 1)),
+                L("Feed the growing caterpillar.", MergeTheme.Leaf, 4, 4, G(3, 2)),
+                L("Give it a big final meal.", MergeTheme.Leaf, 4, 4, G(4, 1))),
+            M("Build a strong branch!", MergeTheme.Twig,
+                L("Prepare small twigs.", MergeTheme.Twig, 3, 4, G(2, 2)),
+                L("Make a strong branch.", MergeTheme.Twig, 4, 4, G(3, 1)),
+                L("Build a leafy hanging place.", MergeTheme.Twig, 4, 4, G(4, 1))),
+            M("Grow nectar-rich flowers!", MergeTheme.Flower,
+                L("Grow the first flower buds.", MergeTheme.Flower, 3, 4, G(2, 2)),
+                L("Help a flower bloom.", MergeTheme.Flower, 4, 4, G(3, 1)),
+                L("Grow more flowers.", MergeTheme.Flower, 4, 4, G(3, 2)),
+                L("Make a nectar-rich flower.", MergeTheme.Flower, 4, 5, G(4, 1))),
         };
-        db.levels[0].isTutorial = true;
+        db.mainLevels[0].subLevels[0].isTutorial = true;
         EditorUtility.SetDirty(db);
         return db;
     }
@@ -393,6 +401,7 @@ public static class ButterflySceneBuilder
     }
     static StorySlide S(string caption, Sprite fg) => new StorySlide { backgroundSprite = storyBg, foregroundSprite = fg, captionText = caption, displayDuration = 4f, transitionIn = SlideTransitionType.FadeIn, transitionOut = SlideTransitionType.FadeOut };
     static ThemeData Theme(MergeTheme t, LifeStage s, string title, string caption, Color tint, Sprite[] sprites, params string[] names) => new ThemeData { theme = t, stage = s, stageTitle = title, gardenCaption = caption, tint = tint, tierNames = names, tierSprites = sprites };
+    static MainLevel M(string title, MergeTheme t, params LevelDefinition[] subs) => new MainLevel { title = title, theme = t, subLevels = subs };
     static LevelDefinition L(string obj, MergeTheme t, int cols, int rows, params GoalRequirement[] goals) => new LevelDefinition { objective = obj, theme = t, columns = cols, rows = rows, goals = goals };
     static GoalRequirement G(int tier, int count) => new GoalRequirement { tier = tier, count = count };
 

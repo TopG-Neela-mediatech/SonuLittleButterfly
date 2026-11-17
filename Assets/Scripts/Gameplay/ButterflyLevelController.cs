@@ -33,6 +33,12 @@ namespace tmkoc.butterfly
         [SerializeField] private RectTransform boardRect;
         [SerializeField] private float introDuration = 1.1f;
 
+        [Header("Round dots (sub-levels of the main level)")]
+        [SerializeField] private Image[] subDots;
+        [SerializeField] private Color dotDone = new Color(1f, 0.71f, 0.33f, 1f);
+        [SerializeField] private Color dotCurrent = Color.white;
+        [SerializeField] private Color dotPending = new Color(1f, 1f, 1f, 0.45f);
+
         [Header("Timing")]
         [SerializeField] private float deliverDelay = 0.9f;
         [SerializeField] private float flightDuration = 0.8f;
@@ -44,9 +50,12 @@ namespace tmkoc.butterfly
         public bool IsBusy => busy;
         public float IntroDuration => introDuration;
 
+        /// <summary>All goals of the current round delivered (LevelManager decides: next round or main level won).</summary>
+        public event Action OnSubLevelComplete;
+
         private readonly Dictionary<int, int> remaining = new Dictionary<int, int>();
         private readonly Dictionary<int, int> initial = new Dictionary<int, int>();
-        private int levelIndex, totalLevels;
+        private int levelIndex, totalLevels, subIndex, subCount = 1;
         private bool busy;
         private MergeItemView flyer;      // reused for every goal delivery
         private Vector2 levelPillHome, boardHome, objectiveHome;
@@ -76,14 +85,20 @@ namespace tmkoc.butterfly
             board.OnMoved -= HandleMoved;
         }
 
-        public void InitializeLevel(LevelDefinition def, ThemeData theme, int index, int total)
+        /// <param name="index">main level (0..3)</param>
+        /// <param name="sub">round inside the main level; the garden shows growth across rounds</param>
+        /// <param name="fullIntro">first round: the garden creatures fly in too; later rounds only swap the board</param>
+        public void InitializeLevel(LevelDefinition def, ThemeData theme, int index, int total, int sub, int subTotal, bool fullIntro)
         {
             StopAllCoroutines();
             CurrentLevel = def;
             CurrentTheme = theme;
             levelIndex = index;
             totalLevels = total;
+            subIndex = Mathf.Max(0, sub);
+            subCount = Mathf.Max(1, subTotal);
             busy = false;
+            lastFullIntro = fullIntro;
 
             remaining.Clear(); initial.Clear();
             foreach (var g in def.goals)
@@ -101,11 +116,53 @@ namespace tmkoc.butterfly
             goalsPanel?.Setup(def.goals, theme, board.FallbackSprite);
             garden.SetCaption("");
             garden.ShowStage(theme != null ? theme.stage : LifeStage.Egg, Progress());
-            PlayIntro();
+            RefreshDots(false);
+            PlayIntro(fullIntro);
+        }
+
+        private bool lastFullIntro = true;
+
+        private void RefreshDots(bool punchCompleted)
+        {
+            if (subDots == null) return;
+            for (int i = 0; i < subDots.Length; i++)
+            {
+                var d = subDots[i];
+                if (d == null) continue;
+                d.gameObject.SetActive(subCount > 1 && i < subCount);
+                d.color = i < subIndex ? dotDone : i == subIndex ? dotCurrent : dotPending;
+                d.rectTransform.DOKill(true);
+                d.rectTransform.localScale = Vector3.one * (i == subIndex ? 1.25f : 1f);
+            }
+            if (punchCompleted && subIndex < subDots.Length && subDots[subIndex] != null)
+            {
+                var d = subDots[subIndex];
+                d.color = dotDone;
+                d.rectTransform.DOPunchScale(Vector3.one * 0.6f, 0.45f, 6, 0.5f);
+            }
+        }
+
+        /// <summary>Between rounds: the finished round's dot fills, the board slides away; then done() starts the next round.</summary>
+        public void PlaySubLevelOutro(Action done)
+        {
+            busy = true;
+            board.Locked = true;
+            RefreshDots(true);
+            if (subDots != null && subIndex < subDots.Length && subDots[subIndex] != null && UiFx.Instance != null)
+                UiFx.Instance.Ring(subDots[subIndex].transform.position, 90f, new Color(1f, 0.8f, 0.4f, 0.9f));
+            var seq = DOTween.Sequence();
+            seq.AppendInterval(0.35f);
+            if (boardRect != null)
+            {
+                float h = ((RectTransform)transform).rect.height;
+                seq.Append(boardRect.DOAnchorPos(boardHome - new Vector2(0f, h), 0.45f).SetEase(Ease.InBack, 1.2f));
+            }
+            if (goalsRect != null) seq.Join(goalsRect.DOScale(0f, 0.3f).SetEase(Ease.InBack));
+            seq.OnComplete(() => done?.Invoke());
         }
 
         /// <summary>Level start: the garden creatures fly/crawl in, the board slides up, the HUD drops in, items pop.</summary>
-        private void PlayIntro()
+        private void PlayIntro(bool fullIntro)
         {
             CaptureHomes();
             introSeq?.Kill(true);
@@ -113,7 +170,7 @@ namespace tmkoc.butterfly
             board.Locked = true;
             introSeq = DOTween.Sequence();
             float h = ((RectTransform)transform).rect.height;
-            if (levelPill != null)
+            if (levelPill != null && fullIntro)
             {
                 levelPill.anchoredPosition = levelPillHome + new Vector2(0f, 320f);
                 introSeq.Insert(0f, levelPill.DOAnchorPos(levelPillHome, 0.5f).SetEase(Ease.OutBack));
@@ -137,7 +194,7 @@ namespace tmkoc.butterfly
                 introSeq.Insert(0.45f, goalsRect.DOScale(1f, 0.4f).SetEase(Ease.OutBack));
             }
             board.PlayItemsIntro(0.55f);
-            garden.PlayIntro(0.05f);
+            if (fullIntro) garden.PlayIntro(0.05f);
             introSeq.AppendInterval(Mathf.Max(0f, introDuration - introSeq.Duration()));
             introSeq.OnComplete(() => { busy = false; board.Locked = false; });
         }
@@ -156,16 +213,18 @@ namespace tmkoc.butterfly
         public void Restart()
         {
             if (busy || CurrentLevel == null) return;
-            InitializeLevel(CurrentLevel, CurrentTheme, levelIndex, totalLevels);
+            InitializeLevel(CurrentLevel, CurrentTheme, levelIndex, totalLevels, subIndex, subCount, lastFullIntro);
             GameManager.Instance?.TutorialController?.OnLevelRestarted();
         }
 
+        /// <summary>Growth of the whole main level: finished rounds plus the share of this round's goals delivered.</summary>
         private float Progress()
         {
             int total = 0, left = 0;
             foreach (var kv in initial) total += kv.Value;
             foreach (var kv in remaining) left += kv.Value;
-            return total == 0 ? 1f : Mathf.Clamp01((float)(total - left) / total);
+            float round = total == 0 ? 1f : Mathf.Clamp01((float)(total - left) / total);
+            return Mathf.Clamp01((subIndex + round) / subCount);
         }
 
         private void HandleMoved() => GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Move);
@@ -231,7 +290,8 @@ namespace tmkoc.butterfly
             if (totalLeft == 0)
             {
                 yield return new WaitForSeconds(0.7f);
-                GameManager.Instance?.InvokeLevelWin();
+                if (OnSubLevelComplete != null) OnSubLevelComplete.Invoke();
+                else GameManager.Instance?.InvokeLevelWin();
             }
             else
             {
@@ -245,6 +305,7 @@ namespace tmkoc.butterfly
         {
             busy = true;
             board.Locked = true;
+            RefreshDots(true); // last round's dot fills
             garden.PlayStageTransform(() => { busy = false; done?.Invoke(); });
         }
     }

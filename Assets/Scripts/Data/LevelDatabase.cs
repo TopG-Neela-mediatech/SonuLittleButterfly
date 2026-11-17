@@ -47,15 +47,31 @@ namespace tmkoc.butterfly
         [Tooltip("Placeholder: one sprite per tier. Leave empty to use the fallback sprite tinted with 'tint'.")]
         public Sprite[] tierSprites = new Sprite[4];
         public Color tint = Color.white;
-        [Tooltip("Story shown after the last level of this stage (the stage gratification).")]
+        [Tooltip("Story shown after this stage is won, before the next main level (or at the very end for the last stage).")]
         public StoryData stageEndStory;
+    }
+
+    /// <summary>
+    /// One of the 4 main levels (one per life-cycle stage, like the HTML prototype). Its sub-levels are
+    /// short merge rounds played back to back; the garden keeps growing across them and the win panel
+    /// only appears after the last one.
+    /// </summary>
+    [Serializable]
+    public class MainLevel
+    {
+        public string title;
+        public MergeTheme theme;
+        public LevelDefinition[] subLevels;
+        public int SubCount => subLevels != null ? subLevels.Length : 0;
     }
 
     [CreateAssetMenu(fileName = "LevelDatabase", menuName = "SonuButterfly/Level Database")]
     public class LevelDatabase : ScriptableObject
     {
         public ThemeData[] themes = new ThemeData[4];
-        public LevelDefinition[] levels;
+        public MainLevel[] mainLevels;
+
+        public int MainCount => mainLevels != null ? mainLevels.Length : 0;
 
         public ThemeData GetTheme(MergeTheme theme)
         {
@@ -63,17 +79,6 @@ namespace tmkoc.butterfly
             return themes.Length > 0 ? themes[0] : null;
         }
 
-        public bool IsStageEnd(int levelIndex)
-        {
-            if (levels == null || levelIndex < 0 || levelIndex >= levels.Length) return false;
-            if (levelIndex == levels.Length - 1) return true;
-            return levels[levelIndex + 1].theme != levels[levelIndex].theme;
-        }
-
-        public bool IsStageStart(int levelIndex)
-        {
-            if (levels == null || levelIndex < 0 || levelIndex >= levels.Length) return false;
-            return levelIndex == 0 || levels[levelIndex - 1].theme != levels[levelIndex].theme;
-        }
+        public MainLevel GetMain(int index) => index >= 0 && index < MainCount ? mainLevels[index] : null;
     }
 }
