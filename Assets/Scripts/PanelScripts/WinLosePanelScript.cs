@@ -34,6 +34,10 @@ public class WinLosePanelScript : MonoBehaviour
     [SerializeField] private float totalSequenceDuration = 5f;
     [SerializeField] private float cloudBounce = 1.5f;
 
+    [Header("Auto Continue")]
+    [Tooltip("Load the next level / story (or retry) automatically this many seconds after the popup has finished appearing. 0 = wait for the button.")]
+    [SerializeField] private float autoContinueDelay = 3f;
+
     [Header("Target Y Positions (Inspector)")]
     [SerializeField] private float cloud1FinalY;
     [SerializeField] private float cloud2FinalY;
@@ -50,6 +54,8 @@ public class WinLosePanelScript : MonoBehaviour
 
     private bool hasWon = true;
     private Sequence mainSequence;
+    private Tween autoContinueTween;
+    private Action pendingCallback;
     private readonly System.Collections.Generic.List<Tween> activeLoops = new System.Collections.Generic.List<Tween>();
 
 
@@ -84,12 +90,21 @@ public class WinLosePanelScript : MonoBehaviour
     }
     private void AddCallBackInNext(Action callback)
     {
+        pendingCallback = callback;
         nextOrRestartButton.onClick.RemoveAllListeners(); // Clear previous listeners to avoid stacking
-        nextOrRestartButton.onClick.AddListener(() =>
-        {
-            callback?.Invoke();
-            HidePanel();
-        });
+        nextOrRestartButton.onClick.AddListener(Continue);
+    }
+
+    /// <summary>Next/Restart pressed or auto-continue timer elapsed. Runs the callback once.</summary>
+    private void Continue()
+    {
+        autoContinueTween?.Kill();
+        autoContinueTween = null;
+        var cb = pendingCallback;
+        pendingCallback = null;
+        if (cb == null) return;
+        cb.Invoke();
+        HidePanel();
     }
     private void SetupSprites()
     {
@@ -125,6 +140,8 @@ public class WinLosePanelScript : MonoBehaviour
     }
     private void KillAllTweens()
     {
+        autoContinueTween?.Kill();
+        autoContinueTween = null;
         if (mainSequence != null) mainSequence.Kill();
         foreach (var t in activeLoops) t.Kill();
         activeLoops.Clear();
@@ -176,6 +193,8 @@ public class WinLosePanelScript : MonoBehaviour
             StartIdleAnimations();
             nextOrRestartButton.enabled = true;
             homeButton.enabled = true;
+            if (autoContinueDelay > 0f)
+                autoContinueTween = DOVirtual.DelayedCall(autoContinueDelay, Continue);
         });
     }
     private void HidePanel()

@@ -168,12 +168,25 @@ namespace tmkoc.butterfly
             }
         }
 
+        private Vector2 lastLayoutArea;
+
+        /// <summary>The CanvasScaler can settle after Setup (first frame, rotation, resize): re-fit when the area changes.</summary>
+        private void LateUpdate()
+        {
+            if (boardRect == null || grid == null || cols <= 0) return;
+            var parent = boardRect.parent as RectTransform;
+            if (parent == null || (parent.rect.size - lastLayoutArea).sqrMagnitude < 1f) return;
+            Layout();
+            RefitItems();
+        }
+
         /// <summary>Fits the grid into the parent rect, keeping square cells.</summary>
         public void Layout()
         {
             if (boardRect == null || grid == null) return;
             var parent = boardRect.parent as RectTransform;
             Vector2 avail = parent != null ? parent.rect.size : boardRect.rect.size;
+            lastLayoutArea = avail;
             float cellW = (avail.x - 2 * padding - (cols - 1) * spacing) / cols;
             float cellH = (avail.y - 2 * padding - (rows - 1) * spacing) / rows;
             float cell = Mathf.Floor(Mathf.Max(40f, Mathf.Min(cellW, cellH)));
@@ -209,6 +222,13 @@ namespace tmkoc.butterfly
             }
             cells.Sort((x, y) => x.transform.GetSiblingIndex().CompareTo(y.transform.GetSiblingIndex()));
             for (int i = 0; i < cells.Count; i++) cells[i].Bind(this, i);
+        }
+
+        private void RefitItems()
+        {
+            float size = grid.cellSize.x * itemFill;
+            foreach (var kv in items)
+                if (kv.Value != null && kv.Value.Rect.parent == cells[kv.Key].Rect) kv.Value.Rect.sizeDelta = new Vector2(size, size);
         }
 
         private MergeItemView CreateItemView(int index, int tier)

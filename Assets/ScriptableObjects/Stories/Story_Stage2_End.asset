@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Story_Stage2_End
   m_EditorClassIdentifier: 
   slides:
-  - backgroundSprite: {fileID: 21300000, guid: e0ddde8c3d2c1334f808ef9b8079740c, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 0bfdfae5cd1f05f4183080a201dbd672, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
+    foregroundSprite: {fileID: 21300000, guid: 48a0e748fe6d70f41b1f53239757aa52, type: 3}
     captionText: The caterpillar ate well and grew big. Now it is ready to transform,
       but it needs a safe place to hang.
     displayDuration: 4
@@ -22,8 +22,8 @@ MonoBehaviour:
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
-  - backgroundSprite: {fileID: 21300000, guid: e0ddde8c3d2c1334f808ef9b8079740c, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 2ca137971aed1824080f065a7d88f67f, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
+    foregroundSprite: {fileID: 21300000, guid: b57c4e9ff8d71414ca4bd458f1359c34, type: 3}
     captionText: Let us prepare strong twigs and branches so the caterpillar can
       form its chrysalis.
     displayDuration: 4

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Story_Intro
   m_EditorClassIdentifier: 
   slides:
-  - backgroundSprite: {fileID: 21300000, guid: e0ddde8c3d2c1334f808ef9b8079740c, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 0bfdfae5cd1f05f4183080a201dbd672, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
+    foregroundSprite: {fileID: 21300000, guid: 3e1fb1fb058b03140bf792639bff8eec, type: 3}
     captionText: One morning, Sonu spots a beautiful butterfly in Gokuldham garden,
       looking for a safe leaf to lay her egg.
     displayDuration: 4
@@ -22,7 +22,7 @@ MonoBehaviour:
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
-  - backgroundSprite: {fileID: 21300000, guid: e0ddde8c3d2c1334f808ef9b8079740c, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
     foregroundSprite: {fileID: 21300000, guid: 0bfdfae5cd1f05f4183080a201dbd672, type: 3}
     captionText: 'Sonu: "Mummy, look! I want to make a safe home for its egg and
       watch how it grows!"'
@@ -31,7 +31,7 @@ MonoBehaviour:
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
-  - backgroundSprite: {fileID: 21300000, guid: e0ddde8c3d2c1334f808ef9b8079740c, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
     foregroundSprite: {fileID: 21300000, guid: 2ca137971aed1824080f065a7d88f67f, type: 3}
     captionText: 'Madhavi: "Wonderful idea, Sonu! The egg needs a healthy leaf, the
       caterpillar needs food, and the butterfly needs nectar."'
@@ -40,7 +40,7 @@ MonoBehaviour:
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
-  - backgroundSprite: {fileID: 21300000, guid: e0ddde8c3d2c1334f808ef9b8079740c, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
     foregroundSprite: {fileID: 21300000, guid: 0bfdfae5cd1f05f4183080a201dbd672, type: 3}
     captionText: Help Sonu care for the garden and watch the butterfly grow, from
       a tiny egg to a beautiful butterfly!

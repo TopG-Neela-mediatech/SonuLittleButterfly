@@ -23,10 +23,10 @@ MonoBehaviour:
     - Large Water Drop
     - Water Bundle
     tierSprites:
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
+    - {fileID: 21300000, guid: 13536a94527e6b244bf494f9d7c4efa4, type: 3}
+    - {fileID: 21300000, guid: 13536a94527e6b244bf494f9d7c4efa4, type: 3}
+    - {fileID: 21300000, guid: 13536a94527e6b244bf494f9d7c4efa4, type: 3}
+    - {fileID: 21300000, guid: 13536a94527e6b244bf494f9d7c4efa4, type: 3}
     tint: {r: 0.4627451, g: 0.8, b: 0.9098039, a: 1}
     stageEndStory: {fileID: 11400000, guid: af6072ae4de2c6540a02a28643202792, type: 2}
   - theme: 1
@@ -39,10 +39,10 @@ MonoBehaviour:
     - Healthy Leaf
     - Leaf Bundle
     tierSprites:
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
+    - {fileID: 21300000, guid: 16a122434d1f3104885c0670add97103, type: 3}
+    - {fileID: 21300000, guid: 66f0306c9deefc545bcbfd9ea5260fd8, type: 3}
+    - {fileID: 21300000, guid: a402d63579de5e340aa54a9fbaa8d7e8, type: 3}
+    - {fileID: 21300000, guid: d9266a72493d50449ae3ba65628e6b1c, type: 3}
     tint: {r: 0.5019608, g: 0.7882353, b: 0.47058824, a: 1}
     stageEndStory: {fileID: 11400000, guid: bbe330a32cf843840a8f38d1a98f86d0, type: 2}
   - theme: 2
@@ -55,10 +55,10 @@ MonoBehaviour:
     - Strong Branch
     - Leafy Branch
     tierSprites:
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
+    - {fileID: 21300000, guid: b57c4e9ff8d71414ca4bd458f1359c34, type: 3}
+    - {fileID: 21300000, guid: b57c4e9ff8d71414ca4bd458f1359c34, type: 3}
+    - {fileID: 21300000, guid: b57c4e9ff8d71414ca4bd458f1359c34, type: 3}
+    - {fileID: 21300000, guid: b57c4e9ff8d71414ca4bd458f1359c34, type: 3}
     tint: {r: 0.7254902, g: 0.5294118, b: 0.3764706, a: 1}
     stageEndStory: {fileID: 11400000, guid: 189b99dca2fd11544b02693f73199820, type: 2}
   - theme: 3
@@ -71,10 +71,10 @@ MonoBehaviour:
     - Blooming Flower
     - Nectar-Rich Flower
     tierSprites:
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
+    - {fileID: 21300000, guid: 86ff6d103578c254aa385a76ffa1e94b, type: 3}
+    - {fileID: 21300000, guid: 86ff6d103578c254aa385a76ffa1e94b, type: 3}
+    - {fileID: 21300000, guid: 93635f4b7af87cf4cae23c143336a20b, type: 3}
+    - {fileID: 21300000, guid: 93635f4b7af87cf4cae23c143336a20b, type: 3}
     tint: {r: 0.95686275, g: 0.62352943, b: 0.64705884, a: 1}
     stageEndStory: {fileID: 11400000, guid: 18ba4b09a83fc37438dacc5b4ae3a988, type: 2}
   levels:

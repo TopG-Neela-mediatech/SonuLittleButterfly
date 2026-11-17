@@ -30,6 +30,35 @@ public static class ButterflySceneBuilder
     const string WinLosePrefabPath = "Assets/Prefabs/WinLose.prefab";
     const string WinLoseCanvasPrefabPath = "Assets/Prefabs/WinLosePanelCanvas.prefab";
     const string StoryPrefabPath = "Assets/Scripts/StorySystemPackage/Prefabs/StoryCanvas_Root.prefab";
+    const string BackButtonPath = "Assets/ImportedAssets/NewUI/BackButton.png";
+    const string RestartButtonPath = "Assets/ImportedAssets/NewUI/Ellipse 948.png";
+    const string TutorialHandPath = "Assets/ImportedAssets/NewUI/TutorialHand.png";
+    // House 9-slice frames for text backgrounds, cards and board cells (instead of CommonButton.png)
+    const string FrameRoundPath = "Assets/ImportedAssets/NewUI/Frame 1171276659.png"; // 475x285 rounded rect, ~125px corners
+    const string FramePillPath = "Assets/ImportedAssets/NewUI/Frame 1171276660.png";  // 1000x230 pill, 115px caps
+    static readonly Vector4 FrameRoundBorder = new Vector4(130, 130, 130, 130);
+    static readonly Vector4 FramePillBorder = new Vector4(115, 114, 115, 114);
+
+    // Sonu's Little Butterfly art (Assets/ImportedAssets/SonuButterflyAsset)
+    const string ArtRoot = "Assets/ImportedAssets/SonuButterflyAsset/";
+    const string BgArtPath = ArtRoot + "BG_1.png";
+    const string ButterflyArtPath = ArtRoot + "Assets/Butterfly.png";
+    const string CaterpillarArtPath = ArtRoot + "Assets/Caterpillar.png";
+    const string ChrysalisArtPath = ArtRoot + "Assets/Chrysalis.png";
+    const string EggOnLeafArtPath = ArtRoot + "Assets/egg.png";
+    const string EggArtPath = ArtRoot + "Assets/Egg_2.png";
+    const string WaterDropArtPath = ArtRoot + "Assets/water droplet.png";
+    const string BushesArtPath = ArtRoot + "Assets/Bushes.png";
+    const string Bushes2ArtPath = ArtRoot + "Assets/Bushes_2.png";
+    const string BranchArtPath = ArtRoot + "Branch/Branch.png";
+    const string BranchLeafArtPath = ArtRoot + "Branch/Leaf.png";
+    const string BranchDryLeafArtPath = ArtRoot + "Branch/Dry leaf_1.png";
+    const string PlantArtPath = ArtRoot + "Plant/Plant_01.png";
+    const string HalfPlantArtPath = ArtRoot + "Plant/Half Plant.png";
+    const string FreshLeafArtPath = ArtRoot + "Plant/Fresh leaf.png";
+    const string FreshHalfLeafArtPath = ArtRoot + "Plant/Fresh half leaf.png";
+    const string DryLeafArtPath = ArtRoot + "Plant/Dry leaf.png";
+    const string DryHalfLeafArtPath = ArtRoot + "Plant/Dry half leaf.png";
 
     static readonly Color Cream = Hex("#FFF9EB");
     static readonly Color HeadingGreen = Hex("#588367");
@@ -42,6 +71,9 @@ public static class ButterflySceneBuilder
 
     static TMP_FontAsset font;
     static Sprite circle, rounded, cloud, resetIcon, star, storyBg, sonu, sonuSmall;
+    static Sprite backBtn, restartBtn, handSprite, frameRound, framePill;
+    static Sprite bgArt, butterflyArt, caterpillarArt, chrysalisArt, eggOnLeafArt, eggArt, waterDropArt, bushesArt, bushes2Art;
+    static Sprite branchArt, branchLeafArt, branchDryLeafArt, plantArt, halfPlantArt, freshLeafArt, freshHalfLeafArt, dryLeafArt, dryHalfLeafArt;
 
     [MenuItem("Tools/Sonu Butterfly/Build Scene")]
     public static void Build()
@@ -81,86 +113,104 @@ public static class ButterflySceneBuilder
 
         var mc = (RectTransform)mainCanvasGo.transform;
 
-        // ---------------------------------------------------------------- BGPanel + back button
+        // ---------------------------------------------------------------- BGPanel (full-screen garden art) + back button
         var bgPanel = Img(mc, "BGPanel", null, Cream);
         Stretch(bgPanel.rectTransform);
-        if (backButton == null) { backButton = Img(bgPanel.rectTransform, "PlaySchoolBackButton", circle, Color.white).gameObject; backButton.AddComponent<Button>(); }
+        var bgArtImg = Img(bgPanel.rectTransform, "BGArt", bgArt, Color.white); bgArtImg.raycastTarget = false;
+        Place(bgArtImg.rectTransform, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(1080, 1920)); bgArtImg.rectTransform.pivot = new Vector2(0.5f, 1f);
+        var bgAligner = bgArtImg.gameObject.AddComponent<BackgroundAligner>(); // covers the screen and keeps the lawn line under the garden on every aspect
+        if (backButton == null) { backButton = Img(bgPanel.rectTransform, "PlaySchoolBackButton", backBtn, Color.white).gameObject; backButton.AddComponent<Button>(); }
         else backButton.transform.SetParent(bgPanel.transform, false);
         backButton.name = "PlaySchoolBackButton";
+        // same placement as BuildABot / TugOfWar: top-left, pivot (0,1), 50px inset, 125px
+        var backImg = backButton.GetComponent<Image>(); if (backImg != null) { backImg.sprite = backBtn; backImg.color = Color.white; backImg.preserveAspect = true; }
         var backRt = (RectTransform)backButton.transform;
-        backRt.anchorMin = backRt.anchorMax = new Vector2(0, 1); backRt.pivot = new Vector2(0.5f, 0.5f);
-        backRt.anchoredPosition = new Vector2(80, -80); backRt.sizeDelta = new Vector2(110, 110);
+        backRt.anchorMin = backRt.anchorMax = new Vector2(0, 1); backRt.pivot = new Vector2(0, 1);
+        backRt.anchoredPosition = new Vector2(50, -50); backRt.sizeDelta = new Vector2(125, 125);
+        AddSafeArea(backButton, SafeAreaFitter.Mode.PushIn); // background stays full-screen, the button avoids the notch
 
         // ---------------------------------------------------------------- LevelMain / Level1
         var levelMain = Empty(mc, "LevelMain"); Stretch(levelMain);
+        AddSafeArea(levelMain.gameObject, SafeAreaFitter.Mode.FitRect); // all gameplay UI inside the safe area
         var level1 = Empty(levelMain, "Level1"); Stretch(level1);
         var levelController = level1.gameObject.AddComponent<ButterflyLevelController>();
 
-        // Garden (top 40%)
+        // Garden (top 40%): sky, Gokuldham gate and bushes come from BG_1 behind it; only the life-cycle props live here.
         var gardenRt = Empty(level1, "GardenView");
+        SetField(bgAligner, "gardenView", gardenRt);
         gardenRt.anchorMin = new Vector2(0, 0.6f); gardenRt.anchorMax = Vector2.one; gardenRt.offsetMin = gardenRt.offsetMax = Vector2.zero;
         var garden = gardenRt.gameObject.AddComponent<GardenView>();
-        Stretch(Img(gardenRt, "Sky", null, Hex("#BFECEA")).rectTransform);
-        var hill = Img(gardenRt, "Hill", circle, Hex("#A5D9AC")); hill.rectTransform.anchorMin = new Vector2(-0.3f, 0); hill.rectTransform.anchorMax = new Vector2(1.3f, 0.55f); hill.rectTransform.offsetMin = hill.rectTransform.offsetMax = Vector2.zero;
-        var ground = Img(gardenRt, "Ground", null, Hex("#88C995")); ground.rectTransform.anchorMin = Vector2.zero; ground.rectTransform.anchorMax = new Vector2(1, 0.22f); ground.rectTransform.offsetMin = ground.rectTransform.offsetMax = Vector2.zero;
-        var sunGlow = Img(gardenRt, "SunGlow", circle, new Color(1f, 0.95f, 0.74f, 0.85f)); Place(sunGlow.rectTransform, new Vector2(1, 1), new Vector2(-150, -130), new Vector2(200, 200));
-        var sun = Img(gardenRt, "Sun", circle, Hex("#FFE59A")); Place(sun.rectTransform, new Vector2(1, 1), new Vector2(-150, -130), new Vector2(110, 110));
-        var c1 = Img(gardenRt, "Cloud1", cloud, Color.white); Place(c1.rectTransform, new Vector2(0, 1), new Vector2(230, -150), new Vector2(260, 130));
-        var c2 = Img(gardenRt, "Cloud2", cloud, new Color(1, 1, 1, 0.8f)); Place(c2.rectTransform, new Vector2(0.5f, 1), new Vector2(120, -90), new Vector2(200, 100));
-        var branch = Img(gardenRt, "Branch", rounded, Hex("#A87957")); branch.type = Image.Type.Sliced; Place(branch.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -230), new Vector2(760, 40));
-        var plant = Prop(gardenRt, "Plant", rounded, Hex("#78BF70"), new Vector2(0.5f, 0), new Vector2(0, 110), new Vector2(230, 320), new Vector2(0.5f, 0)); plant.GetComponent<Image>().type = Image.Type.Sliced;
-        var egg = Prop(gardenRt, "Egg", circle, Hex("#FFF7DF"), new Vector2(0.5f, 0), new Vector2(75, 400), new Vector2(54, 66), new Vector2(0.5f, 0.5f));
-        var cat = Prop(gardenRt, "Caterpillar", circle, Hex("#77BD67"), new Vector2(0.5f, 0), new Vector2(0, 330), new Vector2(150, 80), new Vector2(0.5f, 0.5f));
-        var chry = Prop(gardenRt, "Chrysalis", circle, Hex("#B2D88A"), new Vector2(0.5f, 1), new Vector2(0, -320), new Vector2(70, 130), new Vector2(0.5f, 0.5f));
-        var bfly = Prop(gardenRt, "Butterfly", circle, Hex("#F6A35F"), new Vector2(0.5f, 0.5f), new Vector2(150, 60), new Vector2(130, 110), new Vector2(0.5f, 0.5f));
+        var sunGlow = Img(gardenRt, "SunGlow", circle, new Color(1f, 0.95f, 0.74f, 0.6f)); Place(sunGlow.rectTransform, new Vector2(1, 1), new Vector2(-170, -230), new Vector2(240, 240)); sunGlow.raycastTarget = false;
+        // flowers (bushes) first so the plant and creatures draw in front of them
         var flowers = new RectTransform[4];
-        for (int i = 0; i < 4; i++) flowers[i] = Prop(gardenRt, "Flower" + i, circle, Hex("#F49FA5"), new Vector2(0, 0), new Vector2(170 + i * 250, 150 + (i % 2) * 25), new Vector2(80, 80), new Vector2(0.5f, 0.5f));
-        var night = Img(gardenRt, "NightOverlay", null, new Color(0.1f, 0.12f, 0.3f, 0f)); Stretch(night.rectTransform); night.raycastTarget = false;
-        var deliveryTarget = Empty(gardenRt, "DeliveryTarget"); Place(deliveryTarget, new Vector2(0.5f, 0), new Vector2(0, 300), new Vector2(10, 10));
-        var captionPill = Img(gardenRt, "CaptionPill", rounded, Hex("#FFFDF1")); captionPill.type = Image.Type.Sliced; StretchX(captionPill.rectTransform, 40, 70, 100); captionPill.rectTransform.anchorMin = new Vector2(0, 0); captionPill.rectTransform.anchorMax = new Vector2(1, 0);
-        var captionText = Text(captionPill.rectTransform, "Caption", "", 30, Hex("#648261"), TextAlignmentOptions.Center); Stretch(captionText.rectTransform, 20, 5);
-        var levelPill = Img(gardenRt, "LevelPill", rounded, Hex("#FFFDF1")); levelPill.type = Image.Type.Sliced; Place(levelPill.rectTransform, new Vector2(0, 1), new Vector2(300, -80), new Vector2(280, 70));
-        var levelText = Text(levelPill.rectTransform, "LevelText", "LEVEL 1 / 20", 30, Hex("#658267"), TextAlignmentOptions.Center); Stretch(levelText.rectTransform, 10, 5);
-        var restartImg = Img(gardenRt, "RestartButton", circle, Hex("#FFFDF1")); Place(restartImg.rectTransform, new Vector2(1, 1), new Vector2(-80, -80), new Vector2(100, 100));
-        var restartIcon = Img(restartImg.rectTransform, "Icon", resetIcon, Hex("#739078")); Place(restartIcon.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(60, 60)); restartIcon.raycastTarget = false;
+        float[] flowerX = { 130, 390, 690, 950 };
+        for (int i = 0; i < 4; i++) flowers[i] = Prop(gardenRt, "Flower" + i, i % 2 == 0 ? bushesArt : bushes2Art, new Vector2(0, 0), new Vector2(flowerX[i], 70), new Vector2(300, 300), new Vector2(0.5f, 0.5f));
+        var branch = Prop(gardenRt, "Branch", branchArt, new Vector2(0, 1), new Vector2(200, -330), new Vector2(420, 300), new Vector2(0.5f, 0.5f));
+        var branchLeaf = Prop(branch, "Leaf", branchLeafArt, new Vector2(0.5f, 0.5f), new Vector2(120, 20), new Vector2(150, 102), new Vector2(0.5f, 0.5f));
+        var plant = Prop(gardenRt, "Plant", plantArt, new Vector2(0.5f, 0), new Vector2(-170, 15), new Vector2(340, 271), new Vector2(0.5f, 0));
+        var plantLeafL = Prop(plant, "LeafLeft", dryLeafArt, new Vector2(0, 0), new Vector2(10, 30), new Vector2(150, 100), new Vector2(0.5f, 0.5f));
+        var plantLeafR = Prop(plant, "LeafRight", dryHalfLeafArt, new Vector2(1, 0), new Vector2(-5, 35), new Vector2(140, 78), new Vector2(0.5f, 0.5f));
+        plantLeafR.localScale = new Vector3(-1, 1, 1);
+        var egg = Prop(gardenRt, "Egg", eggArt, new Vector2(0.5f, 0), new Vector2(-235, 200), new Vector2(150, 150), new Vector2(0.5f, 0.5f));
+        var cat = Prop(gardenRt, "Caterpillar", caterpillarArt, new Vector2(0.5f, 0), new Vector2(80, 85), new Vector2(210, 210), new Vector2(0.5f, 0.5f));
+        var chry = Prop(gardenRt, "Chrysalis", chrysalisArt, new Vector2(0, 1), new Vector2(225, -375), new Vector2(190, 190), new Vector2(0.5f, 0.95f));
+        var bfly = Prop(gardenRt, "Butterfly", butterflyArt, new Vector2(0.5f, 0.5f), new Vector2(230, 80), new Vector2(200, 200), new Vector2(0.5f, 0.5f));
+        var night = Img(gardenRt, "NightOverlay", null, new Color(0.1f, 0.12f, 0.3f, 0f)); night.raycastTarget = false;
+        night.rectTransform.anchorMin = new Vector2(0, -2f); night.rectTransform.anchorMax = new Vector2(1, 1.5f); night.rectTransform.offsetMin = night.rectTransform.offsetMax = Vector2.zero; // garden is 40% of the screen: -1.5 reaches the bottom
+        var deliveryTarget = Empty(gardenRt, "DeliveryTarget"); Place(deliveryTarget, new Vector2(0.5f, 0), new Vector2(-170, 150), new Vector2(10, 10));
+        var levelPill = Img(gardenRt, "LevelPill", null, Hex("#FFFDF1")); Pill(levelPill, 90); Place(levelPill.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -112), new Vector2(320, 90));
+        var levelText = Text(levelPill.rectTransform, "LevelText", "LEVEL 1 / 20", 34, Hex("#658267"), TextAlignmentOptions.Center); Stretch(levelText.rectTransform, 30, 12);
+        var captionPill = Img(gardenRt, "CaptionPill", null, new Color(1f, 0.99f, 0.945f, 0.92f)); Pill(captionPill, 90);
+        captionPill.rectTransform.anchorMin = new Vector2(0, 1); captionPill.rectTransform.anchorMax = new Vector2(1, 1); captionPill.rectTransform.offsetMin = new Vector2(200, -285); captionPill.rectTransform.offsetMax = new Vector2(-200, -195);
+        var captionText = Text(captionPill.rectTransform, "Caption", "", 28, Hex("#648261"), TextAlignmentOptions.Center); Stretch(captionText.rectTransform, 45, 10);
+        captionText.enableAutoSizing = true; captionText.fontSizeMin = 18; captionText.fontSizeMax = 28;
+        // restart: same 125px top-corner button as the back button (mirrored to the right), BuildABot/TugOfWar style
+        var restartImg = Img(gardenRt, "RestartButton", restartBtn, Color.white); restartImg.preserveAspect = true;
+        restartImg.rectTransform.anchorMin = restartImg.rectTransform.anchorMax = new Vector2(1, 1); restartImg.rectTransform.pivot = new Vector2(1, 1);
+        restartImg.rectTransform.anchoredPosition = new Vector2(-50, -50); restartImg.rectTransform.sizeDelta = new Vector2(125, 125);
         var restartButton = restartImg.gameObject.AddComponent<Button>();
 
         SetField(garden, "plant", plant); SetField(garden, "plantImage", plant.GetComponent<Image>());
-        SetField(garden, "branch", branch.rectTransform); SetField(garden, "egg", egg); SetField(garden, "caterpillar", cat);
+        SetField(garden, "branch", branch); SetField(garden, "egg", egg); SetField(garden, "caterpillar", cat);
         SetField(garden, "chrysalis", chry); SetField(garden, "butterfly", bfly); SetField(garden, "flowers", flowers);
         SetField(garden, "sunGlow", sunGlow.rectTransform); SetField(garden, "nightOverlay", night); SetField(garden, "deliveryTarget", deliveryTarget); SetField(garden, "caption", captionText);
+        SetField(garden, "plantGrowthSprites", new Object[] { halfPlantArt, plantArt });
+        SetField(garden, "plantLeaves", new Object[] { plantLeafL.GetComponent<Image>(), plantLeafR.GetComponent<Image>() });
+        SetField(garden, "dryLeafSprites", new Object[] { dryLeafArt, dryHalfLeafArt });
+        SetField(garden, "freshLeafSprites", new Object[] { freshLeafArt, freshHalfLeafArt });
+        SetField(garden, "branchLeaf", branchLeaf.GetComponent<Image>()); SetField(garden, "branchDryLeafSprite", branchDryLeafArt); SetField(garden, "branchFreshLeafSprite", branchLeafArt);
 
         // Game panel (bottom 60%)
         var gamePanel = Empty(level1, "GamePanel");
         gamePanel.anchorMin = Vector2.zero; gamePanel.anchorMax = new Vector2(1, 0.6f); gamePanel.offsetMin = gamePanel.offsetMax = Vector2.zero;
-        var objective = Text(gamePanel, "Objective", "Water the small plant.", 46, HeadingGreen, TextAlignmentOptions.Center); objective.fontStyle = FontStyles.Bold; StretchX(objective.rectTransform, -50, 80, 40); objective.enableAutoSizing = true; objective.fontSizeMin = 28; objective.fontSizeMax = 46;
-        var instruction = Text(gamePanel, "Instruction", "Tap or drag two matching items to merge them!", 28, SoftGreen, TextAlignmentOptions.Center); StretchX(instruction.rectTransform, -115, 40, 40);
+        var objective = Text(gamePanel, "Objective", "Water the small plant.", 46, Hex("#2F5E36"), TextAlignmentOptions.Center); StretchX(objective.rectTransform, -50, 80, 40); objective.enableAutoSizing = true; objective.fontSizeMin = 28; objective.fontSizeMax = 46;
+        var instruction = Text(gamePanel, "Instruction", "Tap or drag two matching items to merge them!", 28, Hex("#3F6F45"), TextAlignmentOptions.Center); StretchX(instruction.rectTransform, -118, 50, 40);
 
         var goalsRt = Empty(gamePanel, "Goals"); StretchX(goalsRt, -215, 120, 20);
         var hlg = goalsRt.gameObject.AddComponent<HorizontalLayoutGroup>(); hlg.spacing = 16; hlg.childAlignment = TextAnchor.MiddleCenter; hlg.childControlWidth = false; hlg.childControlHeight = false; hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
         var goalsPanel = goalsRt.gameObject.AddComponent<GoalsPanel>();
-        var chip = Img(goalsRt, "GoalChip", rounded, GoalYellow); chip.type = Image.Type.Sliced; chip.rectTransform.sizeDelta = new Vector2(360, 110);
-        var chipIcon = BuildItemView(chip.rectTransform, "ItemIcon", 86, false); Place(chipIcon.Rect, new Vector2(0, 0.5f), new Vector2(60, 0), new Vector2(86, 86));
-        var chipName = Text(chip.rectTransform, "Name", "Water Drop", 26, Hex("#A47A4B"), TextAlignmentOptions.Left); chipName.fontStyle = FontStyles.Bold; Place(chipName.rectTransform, new Vector2(0, 1), new Vector2(230, -32), new Vector2(240, 40));
-        var chipCount = Text(chip.rectTransform, "Count", "0 / 1 collected", 20, Hex("#A47A4B"), TextAlignmentOptions.Left); Place(chipCount.rectTransform, new Vector2(0, 0), new Vector2(230, 28), new Vector2(240, 34));
+        var chip = Img(goalsRt, "GoalChip", null, GoalYellow); Round(chip, 30); chip.rectTransform.sizeDelta = new Vector2(360, 110);
+        var chipIcon = BuildItemView(chip.rectTransform, "ItemIcon", 86, false); Place(chipIcon.Rect, new Vector2(0, 0.5f), new Vector2(66, 0), new Vector2(86, 86));
+        chipIcon.gameObject.SetActive(true); chipIcon.transform.Find("TierBadge")?.gameObject.SetActive(false);
+        var chipName = Text(chip.rectTransform, "Name", "Water Drop", 26, Hex("#A47A4B"), TextAlignmentOptions.Center); Place(chipName.rectTransform, new Vector2(0, 0.5f), new Vector2(232, 17), new Vector2(220, 40));
+        var chipCount = Text(chip.rectTransform, "Count", "0 / 1 collected", 20, Hex("#A47A4B"), TextAlignmentOptions.Center); Place(chipCount.rectTransform, new Vector2(0, 0.5f), new Vector2(232, -22), new Vector2(220, 32));
         SetField(goalsPanel, "container", goalsRt); SetField(goalsPanel, "chipTemplate", chip.gameObject);
 
         var boardArea = Empty(gamePanel, "BoardArea"); boardArea.anchorMin = Vector2.zero; boardArea.anchorMax = Vector2.one; boardArea.offsetMin = new Vector2(50, 75); boardArea.offsetMax = new Vector2(-50, -290);
-        var boardImg = Img(boardArea, "Board", rounded, BoardGreen); boardImg.type = Image.Type.Sliced; Place(boardImg.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 900));
+        var boardImg = Img(boardArea, "Board", null, new Color(1f, 1f, 1f, 0.45f)); Round(boardImg, 40); Place(boardImg.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 900));
         var grid = boardImg.gameObject.AddComponent<GridLayoutGroup>();
         var board = boardImg.gameObject.AddComponent<MergeBoard>();
-        var cellImg = Img(boardImg.rectTransform, "CellTemplate", rounded, CellGreen); cellImg.type = Image.Type.Sliced;
+        var cellImg = Img(boardImg.rectTransform, "CellTemplate", null, new Color(1f, 0.976f, 0.92f, 0.9f)); Round(cellImg, 26);
         var outline = cellImg.gameObject.AddComponent<Outline>(); outline.effectColor = Hex("#FFB56C"); outline.effectDistance = new Vector2(5, -5); outline.enabled = false;
         cellImg.gameObject.AddComponent<MergeCell>();
         var itemTemplate = BuildItemView(boardArea, "ItemTemplate", 200, true);
-        var hint = Text(gamePanel, "Hint", "Match two items of the same kind to grow them.", 26, HintGreen, TextAlignmentOptions.Center); StretchX(hint.rectTransform, 38, 40, 40); hint.rectTransform.anchorMin = new Vector2(0, 0); hint.rectTransform.anchorMax = new Vector2(1, 0);
+        var hint = Text(gamePanel, "Hint", "Match two items of the same kind to grow them.", 26, Hex("#3F6F45"), TextAlignmentOptions.Center); StretchX(hint.rectTransform, 40, 50, 40); hint.rectTransform.anchorMin = new Vector2(0, 0); hint.rectTransform.anchorMax = new Vector2(1, 0);
 
         var dragLayer = Empty(level1, "DragLayer"); Stretch(dragLayer);
         var flightLayer = Empty(level1, "FlightLayer"); Stretch(flightLayer);
-        var hand = Img(level1, "TutorialHand", circle, new Color(1f, 1f, 1f, 0.9f)); Place(hand.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(90, 90)); hand.raycastTarget = false;
+        var hand = Img(level1, "TutorialHand", handSprite, Color.white); hand.preserveAspect = true; hand.raycastTarget = false;
+        Place(hand.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170, 170)); hand.rectTransform.pivot = new Vector2(0.42f, 0.9f); // fingertip on the target
         var handCg = hand.gameObject.AddComponent<CanvasGroup>(); handCg.blocksRaycasts = false;
-        var handLabel = Text(hand.rectTransform, "Label", "TAP", 22, Hex("#E8795A"), TextAlignmentOptions.Center); Stretch(handLabel.rectTransform); handLabel.fontStyle = FontStyles.Bold;
-        var handRing = hand.gameObject.AddComponent<Outline>(); handRing.effectColor = Hex("#E8795A"); handRing.effectDistance = new Vector2(4, -4);
 
         SetField(board, "boardRect", boardImg.rectTransform); SetField(board, "grid", grid); SetField(board, "cellTemplate", cellImg.GetComponent<MergeCell>());
         SetField(board, "itemTemplate", itemTemplate); SetField(board, "dragLayer", dragLayer); SetField(board, "fallbackItemSprite", circle);
@@ -172,24 +222,24 @@ public static class ButterflySceneBuilder
         var finalImg = Img(mc, "FinalCelebrationPanel", null, new Color(0.26f, 0.4f, 0.32f, 0.7f)); Stretch(finalImg.rectTransform);
         var finalCg = finalImg.gameObject.AddComponent<CanvasGroup>();
         var finalPanel = finalImg.gameObject.AddComponent<FinalCelebrationPanel>();
-        var modal = Img(finalImg.rectTransform, "Modal", rounded, Hex("#FFF9E8")); modal.type = Image.Type.Sliced; Place(modal.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920, 1150));
-        var finalTitle = Text(modal.rectTransform, "Title", "Butterfly Garden Helper!", 52, Hex("#EA936D"), TextAlignmentOptions.Center); finalTitle.fontStyle = FontStyles.Bold; Place(finalTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -80), new Vector2(860, 80));
+        var modal = Img(finalImg.rectTransform, "Modal", null, Hex("#FFF9E8")); Round(modal, 60); modal.gameObject.AddComponent<FitInsideParent>(); /* shrinks on narrow screens (foldables) */ Place(modal.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920, 1150));
+        var finalTitle = Text(modal.rectTransform, "Title", "Butterfly Garden Helper!", 52, Hex("#EA936D"), TextAlignmentOptions.Center); Place(finalTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -80), new Vector2(860, 80));
         var cycleRow = Empty(modal.rectTransform, "LifeCycle"); Place(cycleRow, new Vector2(0.5f, 1), new Vector2(0, -260), new Vector2(880, 220));
         string[] stepNames = { "Egg", "Caterpillar", "Chrysalis", "Butterfly" };
-        Color[] stepColors = { Hex("#FFF7DF"), Hex("#77BD67"), Hex("#B2D88A"), Hex("#F6A35F") };
+        Sprite[] stepArt = { eggOnLeafArt, caterpillarArt, chrysalisArt, butterflyArt };
         var steps = new RectTransform[4];
         for (int i = 0; i < 4; i++)
         {
-            steps[i] = Prop(cycleRow, "Step" + i, circle, stepColors[i], new Vector2(0, 0.5f), new Vector2(110 + i * 220, 0), new Vector2(150, 150), new Vector2(0.5f, 0.5f));
-            steps[i].Find("Label").GetComponent<TextMeshProUGUI>().text = stepNames[i];
-            if (i < 3) { var arrow = Text(cycleRow, "Arrow" + i, ">", 48, Hex("#EA936D"), TextAlignmentOptions.Center); Place(arrow.rectTransform, new Vector2(0, 0.5f), new Vector2(220 + i * 220, 0), new Vector2(60, 60)); }
+            steps[i] = Prop(cycleRow, "Step" + i, stepArt[i], new Vector2(0, 0.5f), new Vector2(110 + i * 220, 15), new Vector2(190, 190), new Vector2(0.5f, 0.5f));
+            var stepLabel = Text(steps[i], "Label", stepNames[i], 26, Hex("#78967C"), TextAlignmentOptions.Center); Place(stepLabel.rectTransform, new Vector2(0.5f, 0), new Vector2(0, -10), new Vector2(200, 40));
+            if (i < 3) { var arrow = Text(cycleRow, "Arrow" + i, ">", 48, Hex("#EA936D"), TextAlignmentOptions.Center); Place(arrow.rectTransform, new Vector2(0, 0.5f), new Vector2(220 + i * 220, 15), new Vector2(60, 60)); }
         }
         var badge = Img(modal.rectTransform, "Badge", star, Color.white); Place(badge.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 20), new Vector2(340, 340));
-        var badgeLabel = Text(badge.rectTransform, "Label", "GARDEN\nHELPER", 30, Hex("#8D724D"), TextAlignmentOptions.Center); badgeLabel.fontStyle = FontStyles.Bold; Place(badgeLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -10), new Vector2(240, 120));
+        var badgeLabel = Text(badge.rectTransform, "Label", "GARDEN\nHELPER", 30, Hex("#8D724D"), TextAlignmentOptions.Center); Place(badgeLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -10), new Vector2(240, 120));
         var reward = Text(modal.rectTransform, "Reward", "You earned a badge and 10 stars!", 34, Hex("#78967C"), TextAlignmentOptions.Center); Place(reward.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 250), new Vector2(860, 100));
-        var contImg = Img(modal.rectTransform, "ContinueButton", rounded, Orange); contImg.type = Image.Type.Sliced; Place(contImg.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 110), new Vector2(380, 110));
+        var contImg = Img(modal.rectTransform, "ContinueButton", null, Orange); Pill(contImg, 110); Place(contImg.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 110), new Vector2(380, 110));
         var contBtn = contImg.gameObject.AddComponent<Button>();
-        var contText = Text(contImg.rectTransform, "Text", "Continue", 38, Color.white, TextAlignmentOptions.Center); contText.fontStyle = FontStyles.Bold; Stretch(contText.rectTransform);
+        var contText = Text(contImg.rectTransform, "Text", "Continue", 38, Color.white, TextAlignmentOptions.Center); Stretch(contText.rectTransform, 40, 14);
         SetField(finalPanel, "canvasGroup", finalCg); SetField(finalPanel, "lifeCycleSteps", steps); SetField(finalPanel, "badge", badge.rectTransform);
         SetField(finalPanel, "titleText", finalTitle); SetField(finalPanel, "rewardText", reward); SetField(finalPanel, "continueButton", contBtn);
         finalImg.gameObject.SetActive(false);
@@ -218,9 +268,10 @@ public static class ButterflySceneBuilder
         var storyScaler = storyGo.GetComponent<CanvasScaler>();
         storyScaler.referenceResolution = new Vector2(1080, 1920); storyScaler.matchWidthOrHeight = 0.5f;
         var fg = storyGo.transform.Find("Panel_Slide/Image_Foreground") as RectTransform; if (fg != null) { fg.sizeDelta = new Vector2(900, 900); fg.anchoredPosition = new Vector2(0, 150); fg.GetComponent<Image>().preserveAspect = true; }
-        var capBg = storyGo.transform.Find("Panel_Slide/Caption_BG") as RectTransform; if (capBg != null) { capBg.sizeDelta = new Vector2(1000, 260); capBg.anchoredPosition = new Vector2(0, 160); }
-        var capTxt = storyGo.transform.Find("Panel_Slide/Caption_BG/Text_Caption")?.GetComponent<TextMeshProUGUI>(); if (capTxt != null) { capTxt.fontSize = 38; capTxt.enableAutoSizing = true; capTxt.fontSizeMin = 24; capTxt.fontSizeMax = 40; }
-        var skip = storyGo.transform.Find("Button_Skip") as RectTransform; if (skip != null) { skip.anchoredPosition = new Vector2(-90, -90); skip.sizeDelta = new Vector2(120, 120); }
+        var capBg = storyGo.transform.Find("Panel_Slide/Caption_BG") as RectTransform; if (capBg != null) { capBg.sizeDelta = new Vector2(1000, 260); capBg.anchoredPosition = new Vector2(0, 160); var capImg = capBg.GetComponent<Image>(); if (capImg != null) Round(capImg, 50); }
+        var capTxt = storyGo.transform.Find("Panel_Slide/Caption_BG/Text_Caption")?.GetComponent<TextMeshProUGUI>(); if (capTxt != null) { capTxt.fontSize = 38; capTxt.enableAutoSizing = true; capTxt.fontSizeMin = 24; capTxt.fontSizeMax = 40; capTxt.alignment = TextAlignmentOptions.Center; Stretch(capTxt.rectTransform, 50, 25); }
+        var skip = storyGo.transform.Find("Button_Skip") as RectTransform; if (skip != null) { skip.anchoredPosition = new Vector2(-90, -90); skip.sizeDelta = new Vector2(120, 120); AddSafeArea(skip.gameObject, SafeAreaFitter.Mode.PushIn); }
+        if (font != null) foreach (var t in storyGo.GetComponentsInChildren<TextMeshProUGUI>(true)) { t.font = font; t.fontStyle = FontStyles.Normal; }
         var storyController = storyGo.GetComponent<StoryController>();
         storyGo.SetActive(false);
 
@@ -268,10 +319,10 @@ public static class ButterflySceneBuilder
         if (db == null) { db = ScriptableObject.CreateInstance<LevelDatabase>(); AssetDatabase.CreateAsset(db, DbPath); }
         db.themes = new[]
         {
-            Theme(MergeTheme.Water, LifeStage.Egg, "Grow a healthy leaf!", "Keep the egg safe on a fresh leaf.", Hex("#76CCE8"), "Tiny Water Drop", "Water Drop", "Large Water Drop", "Water Bundle"),
-            Theme(MergeTheme.Leaf, LifeStage.Caterpillar, "Feed the hungry caterpillar!", "Help the caterpillar grow big and strong.", Hex("#80C978"), "Tiny Leaf", "Small Leaf", "Healthy Leaf", "Leaf Bundle"),
-            Theme(MergeTheme.Twig, LifeStage.Chrysalis, "Build a strong branch!", "Watch carefully as the chrysalis changes.", Hex("#B98760"), "Tiny Twig", "Small Twig", "Strong Branch", "Leafy Branch"),
-            Theme(MergeTheme.Flower, LifeStage.Butterfly, "Grow nectar-rich flowers!", "Help the butterfly stay healthy.", Hex("#F49FA5"), "Tiny Flower Bud", "Large Flower Bud", "Blooming Flower", "Nectar-Rich Flower"),
+            Theme(MergeTheme.Water, LifeStage.Egg, "Grow a healthy leaf!", "Keep the egg safe on a fresh leaf.", Hex("#76CCE8"), new[] { waterDropArt, waterDropArt, waterDropArt, waterDropArt }, "Tiny Water Drop", "Water Drop", "Large Water Drop", "Water Bundle"),
+            Theme(MergeTheme.Leaf, LifeStage.Caterpillar, "Feed the hungry caterpillar!", "Help the caterpillar grow big and strong.", Hex("#80C978"), new[] { freshHalfLeafArt, freshLeafArt, branchLeafArt, halfPlantArt }, "Tiny Leaf", "Small Leaf", "Healthy Leaf", "Leaf Bundle"),
+            Theme(MergeTheme.Twig, LifeStage.Chrysalis, "Build a strong branch!", "Watch carefully as the chrysalis changes.", Hex("#B98760"), new[] { branchArt, branchArt, branchArt, branchArt }, "Tiny Twig", "Small Twig", "Strong Branch", "Leafy Branch"),
+            Theme(MergeTheme.Flower, LifeStage.Butterfly, "Grow nectar-rich flowers!", "Help the butterfly stay healthy.", Hex("#F49FA5"), new[] { bushes2Art, bushes2Art, bushesArt, bushesArt }, "Tiny Flower Bud", "Large Flower Bud", "Blooming Flower", "Nectar-Rich Flower"),
         };
         db.levels = new[]
         {
@@ -309,21 +360,21 @@ public static class ButterflySceneBuilder
     {
         if (!AssetDatabase.IsValidFolder(StoryFolder)) AssetDatabase.CreateFolder(SoFolder, "Stories");
         Story("Story_Intro",
-            S("One morning, Sonu spots a beautiful butterfly in Gokuldham garden, looking for a safe leaf to lay her egg.", sonu),
+            S("One morning, Sonu spots a beautiful butterfly in Gokuldham garden, looking for a safe leaf to lay her egg.", butterflyArt),
             S("Sonu: \"Mummy, look! I want to make a safe home for its egg and watch how it grows!\"", sonu),
             S("Madhavi: \"Wonderful idea, Sonu! The egg needs a healthy leaf, the caterpillar needs food, and the butterfly needs nectar.\"", sonuSmall),
             S("Help Sonu care for the garden and watch the butterfly grow, from a tiny egg to a beautiful butterfly!", sonu));
         db.GetTheme(MergeTheme.Water).stageEndStory = Story("Story_Stage1_End",
-            S("The mother butterfly lands on the healthy leaf and lays an egg. After a few days, a tiny caterpillar hatches!", sonu),
-            S("Sonu: \"Yay! The butterfly found a home for her egg!\" Now the hungry caterpillar needs lots of leaves to eat.", sonuSmall));
+            S("The mother butterfly lands on the healthy leaf and lays an egg. After a few days, a tiny caterpillar hatches!", eggOnLeafArt),
+            S("Sonu: \"Yay! The butterfly found a home for her egg!\" Now the hungry caterpillar needs lots of leaves to eat.", caterpillarArt));
         db.GetTheme(MergeTheme.Leaf).stageEndStory = Story("Story_Stage2_End",
-            S("The caterpillar ate well and grew big. Now it is ready to transform, but it needs a safe place to hang.", sonu),
-            S("Let us prepare strong twigs and branches so the caterpillar can form its chrysalis.", sonuSmall));
+            S("The caterpillar ate well and grew big. Now it is ready to transform, but it needs a safe place to hang.", caterpillarArt),
+            S("Let us prepare strong twigs and branches so the caterpillar can form its chrysalis.", branchArt));
         db.GetTheme(MergeTheme.Twig).stageEndStory = Story("Story_Stage3_End",
-            S("The caterpillar hangs beneath the strong branch and forms a chrysalis. Days pass as it changes inside.", sonu),
-            S("Madhavi: \"Amazing, Sonu! The caterpillar has transformed into a butterfly!\" Now it needs nectar-rich flowers.", sonuSmall));
+            S("The caterpillar hangs beneath the strong branch and forms a chrysalis. Days pass as it changes inside.", chrysalisArt),
+            S("Madhavi: \"Amazing, Sonu! The caterpillar has transformed into a butterfly!\" Now it needs nectar-rich flowers.", butterflyArt));
         db.GetTheme(MergeTheme.Flower).stageEndStory = Story("Story_Stage4_End",
-            S("The butterfly drinks nectar from the flowers you grew and flies happily around Gokuldham garden.", sonu),
+            S("The butterfly drinks nectar from the flowers you grew and flies happily around Gokuldham garden.", butterflyArt),
             S("Sonu: \"We did it! Our tiny egg has become a beautiful butterfly!\" Madhavi: \"Now you know how a butterfly grows!\"", sonuSmall));
         EditorUtility.SetDirty(db);
     }
@@ -338,7 +389,7 @@ public static class ButterflySceneBuilder
         return so;
     }
     static StorySlide S(string caption, Sprite fg) => new StorySlide { backgroundSprite = storyBg, foregroundSprite = fg, captionText = caption, displayDuration = 4f, transitionIn = SlideTransitionType.FadeIn, transitionOut = SlideTransitionType.FadeOut };
-    static ThemeData Theme(MergeTheme t, LifeStage s, string title, string caption, Color tint, params string[] names) => new ThemeData { theme = t, stage = s, stageTitle = title, gardenCaption = caption, tint = tint, tierNames = names, tierSprites = new Sprite[4] };
+    static ThemeData Theme(MergeTheme t, LifeStage s, string title, string caption, Color tint, Sprite[] sprites, params string[] names) => new ThemeData { theme = t, stage = s, stageTitle = title, gardenCaption = caption, tint = tint, tierNames = names, tierSprites = sprites };
     static LevelDefinition L(string obj, MergeTheme t, int cols, int rows, params GoalRequirement[] goals) => new LevelDefinition { objective = obj, theme = t, columns = cols, rows = rows, goals = goals };
     static GoalRequirement G(int tier, int count) => new GoalRequirement { tier = tier, count = count };
 
@@ -351,6 +402,25 @@ public static class ButterflySceneBuilder
         circle = AssetDatabase.LoadAssetAtPath<Sprite>(CirclePath); rounded = AssetDatabase.LoadAssetAtPath<Sprite>(RoundedPath); cloud = AssetDatabase.LoadAssetAtPath<Sprite>(CloudPath);
         resetIcon = AssetDatabase.LoadAssetAtPath<Sprite>(ResetPath); star = AssetDatabase.LoadAssetAtPath<Sprite>(StarPath); storyBg = AssetDatabase.LoadAssetAtPath<Sprite>(StoryBgPath);
         sonu = AssetDatabase.LoadAssetAtPath<Sprite>(SonuPath); sonuSmall = AssetDatabase.LoadAssetAtPath<Sprite>(SonuSmallPath) ?? sonu;
+
+        EnsureSprite(FrameRoundPath, FrameRoundBorder); EnsureSprite(FramePillPath, FramePillBorder);
+        frameRound = AssetDatabase.LoadAssetAtPath<Sprite>(FrameRoundPath); framePill = AssetDatabase.LoadAssetAtPath<Sprite>(FramePillPath);
+        backBtn = LoadSprite(BackButtonPath); restartBtn = LoadSprite(RestartButtonPath); handSprite = LoadSprite(TutorialHandPath);
+        bgArt = LoadSprite(BgArtPath); butterflyArt = LoadSprite(ButterflyArtPath); caterpillarArt = LoadSprite(CaterpillarArtPath);
+        chrysalisArt = LoadSprite(ChrysalisArtPath); eggOnLeafArt = LoadSprite(EggOnLeafArtPath); eggArt = LoadSprite(EggArtPath);
+        waterDropArt = LoadSprite(WaterDropArtPath); bushesArt = LoadSprite(BushesArtPath); bushes2Art = LoadSprite(Bushes2ArtPath);
+        branchArt = LoadSprite(BranchArtPath); branchLeafArt = LoadSprite(BranchLeafArtPath); branchDryLeafArt = LoadSprite(BranchDryLeafArtPath);
+        plantArt = LoadSprite(PlantArtPath); halfPlantArt = LoadSprite(HalfPlantArtPath);
+        freshLeafArt = LoadSprite(FreshLeafArtPath); freshHalfLeafArt = LoadSprite(FreshHalfLeafArtPath);
+        dryLeafArt = LoadSprite(DryLeafArtPath); dryHalfLeafArt = LoadSprite(DryHalfLeafArtPath);
+        storyBg = bgArt != null ? bgArt : storyBg;
+    }
+    static Sprite LoadSprite(string path)
+    {
+        EnsureSprite(path, Vector4.zero);
+        var sp = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (sp == null) Debug.LogWarning("[ButterflySceneBuilder] sprite missing: " + path);
+        return sp;
     }
     static void EnsureSprite(string path, Vector4 border)
     {
@@ -397,7 +467,11 @@ public static class ButterflySceneBuilder
         var tmp = rt.gameObject.AddComponent<TextMeshProUGUI>();
         if (font != null) tmp.font = font;
         tmp.text = text; tmp.fontSize = size; tmp.color = color; tmp.alignment = align; tmp.raycastTarget = false;
+        tmp.fontStyle = FontStyles.Normal; // Poppins SemiBold only, no faux bold
         tmp.textWrappingMode = TextWrappingModes.Normal; tmp.overflowMode = TextOverflowModes.Overflow;
+        // shrink to fit the box, never grow past the design size
+        tmp.enableAutoSizing = true; tmp.fontSizeMax = size; tmp.fontSizeMin = Mathf.Max(12f, Mathf.Round(size * 0.55f));
+        tmp.margin = Vector4.zero;
         return tmp;
     }
     static RectTransform Prop(Transform parent, string name, Sprite sprite, Color color, Vector2 anchor, Vector2 pos, Vector2 size, Vector2 pivot)
@@ -410,9 +484,18 @@ public static class ButterflySceneBuilder
         Stretch(label.rectTransform);
         return rt;
     }
+    /// <summary>Art prop: white, aspect-preserved, no placeholder label.</summary>
+    static RectTransform Prop(Transform parent, string name, Sprite sprite, Vector2 anchor, Vector2 pos, Vector2 size, Vector2 pivot)
+    {
+        var img = Img(parent, name, sprite, Color.white);
+        img.raycastTarget = false; img.preserveAspect = true;
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = anchor; rt.pivot = pivot; rt.anchoredPosition = pos; rt.sizeDelta = size;
+        return rt;
+    }
     static MergeItemView BuildItemView(Transform parent, string name, float size, bool withName)
     {
-        var bg = Img(parent, name, rounded, Color.white); bg.type = Image.Type.Sliced;
+        var bg = Img(parent, name, null, Color.white); Round(bg, 24);
         Place(bg.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(size, size));
         var cg = bg.gameObject.AddComponent<CanvasGroup>();
         var icon = Img(bg.rectTransform, "Icon", circle, Color.white); icon.raycastTarget = false; icon.preserveAspect = true;
@@ -423,11 +506,21 @@ public static class ButterflySceneBuilder
         nameLabel.gameObject.SetActive(withName);
         var tierBg = Img(bg.rectTransform, "TierBadge", circle, Hex("#F6CB7D")); tierBg.raycastTarget = false;
         Place(tierBg.rectTransform, new Vector2(1, 1), new Vector2(-6, -6), new Vector2(size * 0.26f, size * 0.26f)); tierBg.rectTransform.pivot = new Vector2(1, 1);
-        var tier = Text(tierBg.rectTransform, "Tier", "1", size * 0.16f, Hex("#8D724D"), TextAlignmentOptions.Center); tier.fontStyle = FontStyles.Bold; Stretch(tier.rectTransform);
+        var tier = Text(tierBg.rectTransform, "Tier", "1", size * 0.16f, Hex("#8D724D"), TextAlignmentOptions.Center); Stretch(tier.rectTransform);
         var view = bg.gameObject.AddComponent<MergeItemView>();
         SetField(view, "background", bg); SetField(view, "icon", icon); SetField(view, "nameLabel", nameLabel); SetField(view, "tierLabel", tier); SetField(view, "canvasGroup", cg);
         bg.gameObject.SetActive(false);
         return view;
+    }
+    /// <summary>9-sliced rounded-rect frame; radius is the on-screen corner radius in canvas units.</summary>
+    static void Round(Image img, float radius) => Slice(img, frameRound, FrameRoundBorder.x, radius);
+    /// <summary>9-sliced pill frame with fully round caps for a box of the given height.</summary>
+    static void Pill(Image img, float height) => Slice(img, framePill, FramePillBorder.x, height * 0.5f);
+    static void Slice(Image img, Sprite sprite, float borderPx, float radius)
+    {
+        img.sprite = sprite != null ? sprite : rounded;
+        img.type = Image.Type.Sliced; img.fillCenter = true; img.preserveAspect = false;
+        img.pixelsPerUnitMultiplier = sprite != null ? borderPx / Mathf.Max(1f, radius) : 1f;
     }
     static void Stretch(RectTransform rt, float padX = 0, float padY = 0)
     {
@@ -455,6 +548,14 @@ public static class ButterflySceneBuilder
             for (int i = 0; i < arr.Length; i++) p.GetArrayElementAtIndex(i).objectReferenceValue = arr[i];
         }
         else p.objectReferenceValue = value as Object;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+    static void AddSafeArea(GameObject go, SafeAreaFitter.Mode mode)
+    {
+        var fitter = GetOrAdd<SafeAreaFitter>(go);
+        var so = new SerializedObject(fitter);
+        so.FindProperty("mode").enumValueIndex = (int)mode;
+        so.FindProperty("basePosition").vector2Value = ((RectTransform)go.transform).anchoredPosition;
         so.ApplyModifiedPropertiesWithoutUndo();
     }
     static T GetOrAdd<T>(GameObject go) where T : Component { var c = go.GetComponent<T>(); return c != null ? c : go.AddComponent<T>(); }
