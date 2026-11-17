@@ -33,6 +33,12 @@ namespace tmkoc.butterfly
         [Tooltip("Anywhere: any two matching items merge regardless of position. Otherwise they must be neighbours.")]
         [SerializeField] private MergeRule mergeRule = MergeRule.Anywhere;
 
+        [Header("Feedback")]
+        [SerializeField] private float moveDuration = 0.18f;
+        [SerializeField] private float mergeFlyDuration = 0.14f;
+        [SerializeField] private Color mergeRingColor = new Color(1f, 0.92f, 0.55f, 0.9f);
+        [SerializeField] private Color wrongFlashColor = new Color(1f, 0.62f, 0.58f, 1f);
+
         public event Action<int, int> OnMerged;          // (newTier, cellIndex)
         public event Action OnInvalidMove;
         public event Action OnMoved;
@@ -47,6 +53,8 @@ namespace tmkoc.butterfly
         private int[] tiles = new int[0];
         private readonly List<MergeCell> cells = new List<MergeCell>();
         private readonly Dictionary<int, MergeItemView> items = new Dictionary<int, MergeItemView>();
+        private readonly Stack<MergeItemView> itemPool = new Stack<MergeItemView>(); // views are reused, never destroyed per move
+        private readonly List<int> releaseBuffer = new List<int>();
         private ThemeData theme;
         private int selected = -1;
         private Canvas canvas;
@@ -91,7 +99,7 @@ namespace tmkoc.butterfly
         {
             if (index < 0 || index >= tiles.Length) return;
             tiles[index] = 0;
-            if (items.TryGetValue(index, out var v)) { Destroy(v.gameObject); items.Remove(index); }
+            if (items.TryGetValue(index, out var v)) { ReleaseView(v); items.Remove(index); }
         }
 
         /// <summary>First pair of adjacent equal-tier cells, for the tutorial hand. Returns false if none.</summary>
@@ -137,11 +145,33 @@ namespace tmkoc.butterfly
         // ------------------------------------------------------------------ setup helpers
         private void ClearBoard()
         {
+            foreach (var kv in items) if (kv.Value != null) ReleaseView(kv.Value);
+            items.Clear();
+            if (dragItem != null) { ReleaseView(dragItem); dragItem = null; }
             foreach (var c in cells) if (c != null) Destroy(c.gameObject);
             cells.Clear();
-            foreach (var kv in items) if (kv.Value != null) Destroy(kv.Value.gameObject);
-            items.Clear();
-            if (dragItem != null) { Destroy(dragItem.gameObject); dragItem = null; }
+        }
+
+        // ------------------------------------------------------------------ item view pool
+        private MergeItemView GetView(Transform parent)
+        {
+            MergeItemView view = null;
+            while (itemPool.Count > 0 && view == null) view = itemPool.Pop();
+            if (view == null) view = Instantiate(itemTemplate, parent);
+            else view.transform.SetParent(parent, false);
+            view.gameObject.SetActive(true);
+            return view;
+        }
+
+        private void ReleaseView(MergeItemView view)
+        {
+            if (view == null) return;
+            view.transform.DOKill();
+            view.SetSelected(false);
+            view.SetRaycast(true);
+            view.gameObject.SetActive(false);
+            view.transform.SetParent(dragLayer != null ? dragLayer : boardRect, false);
+            itemPool.Push(view);
         }
 
         private void BuildCells()
@@ -203,12 +233,26 @@ namespace tmkoc.butterfly
         private void RenderAll()
         {
             if (cells.Count != tiles.Length) RecoverCells();
-            foreach (var kv in items) if (kv.Value != null) Destroy(kv.Value.gameObject);
-            items.Clear();
-            foreach (var old in boardRect.GetComponentsInChildren<MergeItemView>(true))
-                if (old != itemTemplate && old.transform.parent != dragLayer) Destroy(old.gameObject);
-            for (int i = 0; i < tiles.Length; i++) if (tiles[i] > 0) CreateItemView(i, tiles[i]);
+            releaseBuffer.Clear();
+            foreach (var kv in items)
+                if (kv.Value == null || tiles[kv.Key] == 0 || kv.Value.Tier != tiles[kv.Key]) releaseBuffer.Add(kv.Key);
+            foreach (int i in releaseBuffer) { ReleaseView(items[i]); items.Remove(i); }
+            for (int i = 0; i < tiles.Length; i++)
+            {
+                if (tiles[i] == 0) continue;
+                if (items.TryGetValue(i, out var v)) ResetViewInCell(v, i);
+                else CreateItemView(i, tiles[i]);
+            }
             RefreshSelection();
+        }
+
+        private void ResetViewInCell(MergeItemView view, int index)
+        {
+            var rt = view.Rect;
+            if (rt.parent != cells[index].Rect) rt.SetParent(cells[index].Rect, false);
+            rt.anchoredPosition = Vector2.zero;
+            float size = grid.cellSize.x * itemFill;
+            rt.sizeDelta = new Vector2(size, size);
         }
 
         /// <summary>Rebuilds the cell list from the hierarchy (editor hot-reload resets non-serialized lists).</summary>
@@ -234,8 +278,7 @@ namespace tmkoc.butterfly
         private MergeItemView CreateItemView(int index, int tier)
         {
             var cell = cells[index];
-            var view = Instantiate(itemTemplate, cell.Rect);
-            view.gameObject.SetActive(true);
+            var view = GetView(cell.Rect);
             view.name = "Item_" + index;
             var rt = view.Rect;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -295,9 +338,11 @@ namespace tmkoc.butterfly
             if (Locked && dragItem == null) return;
             int from = item.CellIndex;
             bool moved = wasDrag && Vector2.Distance(e.position, pressScreenPos) > 12f;
+            Vector3? dropPos = null;
 
             if (dragItem == item)
             {
+                dropPos = item.transform.position;
                 // put the view back in its cell before resolving so RenderAll can clean it up
                 item.transform.SetParent(dragOriginalParent, false);
                 item.transform.SetSiblingIndex(dragOriginalSibling);
@@ -311,10 +356,16 @@ namespace tmkoc.butterfly
             int to = CellUnderPointer(e.position);
             if (moved && to >= 0 && to != from)
             {
-                TryAction(from, to);
+                TryAction(from, to, dropPos);
                 return;
             }
-            if (moved) { RenderAll(); return; }
+            if (moved)
+            {
+                RenderAll();
+                var back = GetItem(from);
+                if (back != null && dropPos.HasValue) SlideIn(back, dropPos.Value);
+                return;
+            }
 
             // tap
             if (selected == -1) { selected = from; RefreshSelection(); }
@@ -350,47 +401,129 @@ namespace tmkoc.butterfly
             return dr + dc == 1;
         }
 
-        /// <summary>Mirrors merge(a,b) from the prototype.</summary>
-        private void TryAction(int a, int b)
+        /// <summary>Mirrors merge(a,b) from the prototype. fromPos: where the moving item is drawn (drag drop point).</summary>
+        private void TryAction(int a, int b, Vector3? fromPos = null)
         {
             if (a < 0 || b < 0 || a == b || tiles[a] == 0) { selected = -1; RenderAll(); return; }
+            Vector3 start = fromPos ?? cells[a].Rect.position;
 
             if (tiles[b] == 0)
             {
                 tiles[b] = tiles[a];
                 tiles[a] = 0;
                 selected = -1;
+                // keep the same view: it slides to its new cell
+                if (items.TryGetValue(a, out var moving))
+                {
+                    items.Remove(a);
+                    items[b] = moving;
+                    moving.Bind(this, b, tiles[b], theme, fallbackItemSprite);
+                    moving.name = "Item_" + b;
+                }
                 RenderAll();
+                var view = GetItem(b);
+                if (view != null) SlideIn(view, start);
                 OnMoved?.Invoke();
                 return;
             }
-            if (!IsAdjacent(a, b))
+            if (!IsAdjacent(a, b) || tiles[a] != tiles[b] || tiles[a] >= 4)
             {
                 selected = -1;
                 RenderAll();
+                PlayWrong(a, b);
                 OnInvalidMove?.Invoke();
                 return;
             }
-            if (tiles[a] == tiles[b] && tiles[a] < 4)
-            {
-                int t = tiles[a] + 1;
-                tiles[a] = 0;
-                tiles[b] = t;
-                selected = -1;
-                RenderAll();
-                var view = GetItem(b);
-                if (view != null)
-                {
-                    view.transform.DOKill();
-                    view.transform.localScale = Vector3.one;
-                    view.transform.DOPunchScale(Vector3.one * 0.28f, 0.32f, 6, 0.6f);
-                }
-                OnMerged?.Invoke(t, b);
-                return;
-            }
+
+            int t = tiles[a] + 1;
+            tiles[a] = 0;
+            tiles[b] = t;
             selected = -1;
+            // the source view flies into the target, then the merged item pops
+            if (items.TryGetValue(a, out var flyer)) items.Remove(a);
             RenderAll();
-            OnInvalidMove?.Invoke();
+            var merged = GetItem(b);
+            if (flyer != null && dragLayer != null)
+            {
+                flyer.transform.DOKill();
+                flyer.SetSelected(false);
+                flyer.SetRaycast(false);
+                flyer.transform.SetParent(dragLayer, true);
+                flyer.transform.position = start;
+                flyer.transform.localScale = Vector3.one;
+                if (merged != null) merged.transform.localScale = Vector3.zero;
+                flyer.transform.DOMove(cells[b].Rect.position, mergeFlyDuration).SetEase(Ease.InQuad).OnComplete(() =>
+                {
+                    ReleaseView(flyer);
+                    PopMerged(GetItem(b), b);
+                });
+            }
+            else
+            {
+                if (flyer != null) ReleaseView(flyer);
+                PopMerged(merged, b);
+            }
+            OnMerged?.Invoke(t, b);
+        }
+
+        private void SlideIn(MergeItemView view, Vector3 fromWorld)
+        {
+            var tr = view.transform;
+            tr.DOKill();
+            tr.localScale = Vector3.one;
+            tr.position = fromWorld;
+            tr.DOLocalMove(Vector3.zero, moveDuration).SetEase(Ease.OutQuad)
+              .OnComplete(() => tr.DOPunchScale(new Vector3(0.12f, -0.08f, 0f), 0.22f, 5, 0.5f));
+        }
+
+        private void PopMerged(MergeItemView view, int cell)
+        {
+            if (cell < 0 || cell >= cells.Count) return;
+            if (view != null)
+            {
+                view.transform.DOKill();
+                view.transform.localScale = Vector3.one * 0.4f;
+                view.transform.DOScale(1f, 0.35f).SetEase(Ease.OutBack, 2.2f);
+            }
+            var fx = UiFx.Instance;
+            if (fx == null) return;
+            var pos = cells[cell].Rect.position;
+            fx.Ring(pos, grid.cellSize.x * 1.5f, mergeRingColor);
+            fx.Play(FxType.Sparkle, pos);
+        }
+
+        private void PlayWrong(int a, int b)
+        {
+            Shake(a); Shake(b);
+            if (UiFx.Instance != null && b >= 0 && b < cells.Count) UiFx.Instance.Play(FxType.Puff, cells[b].Rect.position);
+        }
+
+        private void Shake(int i)
+        {
+            var v = GetItem(i);
+            if (v != null)
+            {
+                v.transform.DOKill();
+                v.transform.localScale = Vector3.one;
+                v.Rect.anchoredPosition = Vector2.zero;
+                v.Rect.DOShakeAnchorPos(0.35f, new Vector2(16f, 0f), 18, 0f, false, true);
+            }
+            if (i >= 0 && i < cells.Count) cells[i].Flash(wrongFlashColor);
+        }
+
+        /// <summary>Level intro: items pop in one after another.</summary>
+        public void PlayItemsIntro(float delay)
+        {
+            int n = 0;
+            for (int i = 0; i < tiles.Length; i++)
+            {
+                if (!items.TryGetValue(i, out var v) || v == null) continue;
+                var tr = v.transform;
+                tr.DOKill();
+                tr.localScale = Vector3.zero;
+                tr.DOScale(1f, 0.32f).SetDelay(delay + n * 0.04f).SetEase(Ease.OutBack);
+                n++;
+            }
         }
     }
 }

@@ -6,6 +6,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 using tmkoc.butterfly;
+using AssetKits.ParticleImage;
+using AssetKits.ParticleImage.Enumerations;
 
 /// <summary>
 /// One-shot builder for the Sonu's Little Butterfly scene (portrait, 1080x1920 reference).
@@ -158,12 +160,13 @@ public static class ButterflySceneBuilder
         var night = Img(gardenRt, "NightOverlay", null, new Color(0.1f, 0.12f, 0.3f, 0f)); night.raycastTarget = false;
         night.rectTransform.anchorMin = new Vector2(0, -2f); night.rectTransform.anchorMax = new Vector2(1, 1.5f); night.rectTransform.offsetMin = night.rectTransform.offsetMax = Vector2.zero; // garden is 40% of the screen: -1.5 reaches the bottom
         var deliveryTarget = Empty(gardenRt, "DeliveryTarget"); Place(deliveryTarget, new Vector2(0.5f, 0), new Vector2(-170, 150), new Vector2(10, 10));
-        var levelPill = Img(gardenRt, "LevelPill", null, Hex("#FFFDF1")); Pill(levelPill, 90); Place(levelPill.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -112), new Vector2(320, 90));
-        var levelText = Text(levelPill.rectTransform, "LevelText", "LEVEL 1 / 20", 34, Hex("#658267"), TextAlignmentOptions.Center); Stretch(levelText.rectTransform, 30, 12);
+        var levelPill = Img(gardenRt, "LevelPill", null, Hex("#FFFDF1")); Pill(levelPill, 90); Place(levelPill.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -112), new Vector2(260, 90));
+        var levelText = Text(levelPill.rectTransform, "LevelText", "LEVEL 1", 36, Hex("#658267"), TextAlignmentOptions.Center); Stretch(levelText.rectTransform, 30, 12);
         var captionPill = Img(gardenRt, "CaptionPill", null, new Color(1f, 0.99f, 0.945f, 0.92f)); Pill(captionPill, 90);
         captionPill.rectTransform.anchorMin = new Vector2(0, 1); captionPill.rectTransform.anchorMax = new Vector2(1, 1); captionPill.rectTransform.offsetMin = new Vector2(200, -285); captionPill.rectTransform.offsetMax = new Vector2(-200, -195);
         var captionText = Text(captionPill.rectTransform, "Caption", "", 28, Hex("#648261"), TextAlignmentOptions.Center); Stretch(captionText.rectTransform, 45, 10);
         captionText.enableAutoSizing = true; captionText.fontSizeMin = 18; captionText.fontSizeMax = 28;
+        captionPill.gameObject.SetActive(false); // only shown while a stage transformation plays
         // restart: same 125px top-corner button as the back button (mirrored to the right), BuildABot/TugOfWar style
         var restartImg = Img(gardenRt, "RestartButton", restartBtn, Color.white); restartImg.preserveAspect = true;
         restartImg.rectTransform.anchorMin = restartImg.rectTransform.anchorMax = new Vector2(1, 1); restartImg.rectTransform.pivot = new Vector2(1, 1);
@@ -183,40 +186,40 @@ public static class ButterflySceneBuilder
         // Game panel (bottom 60%)
         var gamePanel = Empty(level1, "GamePanel");
         gamePanel.anchorMin = Vector2.zero; gamePanel.anchorMax = new Vector2(1, 0.6f); gamePanel.offsetMin = gamePanel.offsetMax = Vector2.zero;
-        var objective = Text(gamePanel, "Objective", "Water the small plant.", 46, Hex("#2F5E36"), TextAlignmentOptions.Center); StretchX(objective.rectTransform, -50, 80, 40); objective.enableAutoSizing = true; objective.fontSizeMin = 28; objective.fontSizeMax = 46;
-        var instruction = Text(gamePanel, "Instruction", "Tap or drag two matching items to merge them!", 28, Hex("#3F6F45"), TextAlignmentOptions.Center); StretchX(instruction.rectTransform, -118, 50, 40);
+        var objective = Text(gamePanel, "Objective", "Water the small plant.", 46, Hex("#2F5E36"), TextAlignmentOptions.Center); StretchX(objective.rectTransform, -60, 80, 40); objective.enableAutoSizing = true; objective.fontSizeMin = 28; objective.fontSizeMax = 46;
 
-        var goalsRt = Empty(gamePanel, "Goals"); StretchX(goalsRt, -215, 120, 20);
+        var goalsRt = Empty(gamePanel, "Goals"); StretchX(goalsRt, -170, 120, 20);
         var hlg = goalsRt.gameObject.AddComponent<HorizontalLayoutGroup>(); hlg.spacing = 16; hlg.childAlignment = TextAnchor.MiddleCenter; hlg.childControlWidth = false; hlg.childControlHeight = false; hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
         var goalsPanel = goalsRt.gameObject.AddComponent<GoalsPanel>();
-        var chip = Img(goalsRt, "GoalChip", null, GoalYellow); Round(chip, 30); chip.rectTransform.sizeDelta = new Vector2(360, 110);
+        var chip = Img(goalsRt, "GoalChip", null, GoalYellow); Round(chip, 30); chip.rectTransform.sizeDelta = new Vector2(250, 110);
         var chipIcon = BuildItemView(chip.rectTransform, "ItemIcon", 86, false); Place(chipIcon.Rect, new Vector2(0, 0.5f), new Vector2(66, 0), new Vector2(86, 86));
         chipIcon.gameObject.SetActive(true); chipIcon.transform.Find("TierBadge")?.gameObject.SetActive(false);
-        var chipName = Text(chip.rectTransform, "Name", "Water Drop", 26, Hex("#A47A4B"), TextAlignmentOptions.Center); Place(chipName.rectTransform, new Vector2(0, 0.5f), new Vector2(232, 17), new Vector2(220, 40));
-        var chipCount = Text(chip.rectTransform, "Count", "0 / 1 collected", 20, Hex("#A47A4B"), TextAlignmentOptions.Center); Place(chipCount.rectTransform, new Vector2(0, 0.5f), new Vector2(232, -22), new Vector2(220, 32));
+        var chipCount = Text(chip.rectTransform, "Count", "0/1", 44, Hex("#A47A4B"), TextAlignmentOptions.Center); Place(chipCount.rectTransform, new Vector2(0, 0.5f), new Vector2(178, 0), new Vector2(130, 70));
         SetField(goalsPanel, "container", goalsRt); SetField(goalsPanel, "chipTemplate", chip.gameObject);
 
-        var boardArea = Empty(gamePanel, "BoardArea"); boardArea.anchorMin = Vector2.zero; boardArea.anchorMax = Vector2.one; boardArea.offsetMin = new Vector2(50, 75); boardArea.offsetMax = new Vector2(-50, -290);
+        var boardArea = Empty(gamePanel, "BoardArea"); boardArea.anchorMin = Vector2.zero; boardArea.anchorMax = Vector2.one; boardArea.offsetMin = new Vector2(50, 45); boardArea.offsetMax = new Vector2(-50, -245);
         var boardImg = Img(boardArea, "Board", null, new Color(1f, 1f, 1f, 0.45f)); Round(boardImg, 40); Place(boardImg.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 900));
         var grid = boardImg.gameObject.AddComponent<GridLayoutGroup>();
         var board = boardImg.gameObject.AddComponent<MergeBoard>();
         var cellImg = Img(boardImg.rectTransform, "CellTemplate", null, new Color(1f, 0.976f, 0.92f, 0.9f)); Round(cellImg, 26);
         var outline = cellImg.gameObject.AddComponent<Outline>(); outline.effectColor = Hex("#FFB56C"); outline.effectDistance = new Vector2(5, -5); outline.enabled = false;
         cellImg.gameObject.AddComponent<MergeCell>();
-        var itemTemplate = BuildItemView(boardArea, "ItemTemplate", 200, true);
-        var hint = Text(gamePanel, "Hint", "Match two items of the same kind to grow them.", 26, Hex("#3F6F45"), TextAlignmentOptions.Center); StretchX(hint.rectTransform, 40, 50, 40); hint.rectTransform.anchorMin = new Vector2(0, 0); hint.rectTransform.anchorMax = new Vector2(1, 0);
+        var itemTemplate = BuildItemView(boardArea, "ItemTemplate", 200, false);
+        itemTemplate.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0f); // the cell is the tile: no second box, still raycastable
 
         var dragLayer = Empty(level1, "DragLayer"); Stretch(dragLayer);
         var flightLayer = Empty(level1, "FlightLayer"); Stretch(flightLayer);
         var hand = Img(level1, "TutorialHand", handSprite, Color.white); hand.preserveAspect = true; hand.raycastTarget = false;
         Place(hand.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170, 170)); hand.rectTransform.pivot = new Vector2(0.42f, 0.9f); // fingertip on the target
         var handCg = hand.gameObject.AddComponent<CanvasGroup>(); handCg.blocksRaycasts = false;
+        BuildFxLayer(level1);
 
         SetField(board, "boardRect", boardImg.rectTransform); SetField(board, "grid", grid); SetField(board, "cellTemplate", cellImg.GetComponent<MergeCell>());
         SetField(board, "itemTemplate", itemTemplate); SetField(board, "dragLayer", dragLayer); SetField(board, "fallbackItemSprite", circle);
 
         SetField(levelController, "garden", garden); SetField(levelController, "board", board); SetField(levelController, "goalsPanel", goalsPanel); SetField(levelController, "flightLayer", flightLayer);
-        SetField(levelController, "levelLabel", levelText); SetField(levelController, "objectiveText", objective); SetField(levelController, "instructionText", instruction); SetField(levelController, "hintText", hint); SetField(levelController, "restartButton", restartButton);
+        SetField(levelController, "levelLabel", levelText); SetField(levelController, "objectiveText", objective); SetField(levelController, "instructionText", null); SetField(levelController, "hintText", null); SetField(levelController, "restartButton", restartButton);
+        SetField(levelController, "levelPill", levelPill.rectTransform); SetField(levelController, "goalsRect", goalsRt); SetField(levelController, "boardRect", boardImg.rectTransform);
 
         // ---------------------------------------------------------------- final celebration panel
         var finalImg = Img(mc, "FinalCelebrationPanel", null, new Color(0.26f, 0.4f, 0.32f, 0.7f)); Stretch(finalImg.rectTransform);
@@ -493,6 +496,91 @@ public static class ButterflySceneBuilder
         rt.anchorMin = rt.anchorMax = anchor; rt.pivot = pivot; rt.anchoredPosition = pos; rt.sizeDelta = size;
         return rt;
     }
+    // ---------------------------------------------------------------- pooled UI effects (ParticleImage)
+    const string FxSprites = "Assets/AssetKits/ParticleImage/Demo/Sprites/";
+    static void BuildFxLayer(Transform parent)
+    {
+        var layer = Empty(parent, "FxLayer"); Stretch(layer);
+        var fx = layer.gameObject.AddComponent<UiFx>();
+        var star = LoadSprite(FxSprites + "4Star.png");
+        var puff = LoadSprite(FxSprites + "PuffCloud.png");
+        var confetti = LoadSprite(FxSprites + "Confetti.png");
+        var glow = LoadSprite(FxSprites + "CircleGlow.png");
+
+        // merge: golden/white stars bursting out of the cell
+        var sparkle = Emitter(layer, "Sparkle", star, 14, 2.2f, 5f, 0.45f, 0.8f, 140f, 220f, Hex("#FFC23D"), Hex("#FFF4B0"), 0f, 30f, 360f);
+        // wrong move: small soft grey puff
+        var puffFx = Emitter(layer, "Puff", puff, 6, 0.7f, 1.8f, 0.3f, 0.5f, 110f, 170f, new Color(0.8f, 0.77f, 0.73f, 0.75f), new Color(0.95f, 0.94f, 0.92f, 0.7f), 0f, 25f, 60f);
+        // goal delivered: colourful confetti with gravity
+        var conf = Emitter(layer, "Confetti", confetti, 30, 3.5f, 8f, 1f, 1.5f, 90f, 130f, Color.white, Color.white, -10f, 15f, 540f);
+        conf.textureSheetEnabled = true; conf.textureTile = new Vector2Int(5, 5); conf.textureSheetType = SheetType.FPS; conf.textureSheetFPS = 1; conf.textureSheetCycles = 1;
+        conf.textureSheetStartFrame = new ParticleSystem.MinMaxCurve(0f, 25f); conf.textureSheetFrameOverTime = new ParticleSystem.MinMaxCurve(0f);
+        conf.startColor = new ParticleSystem.MinMaxGradient(RainbowGradient()) { mode = ParticleSystemGradientMode.RandomColor };
+
+        var ring = Img(layer, "Ring", glow, Color.white); ring.raycastTarget = false; ring.gameObject.SetActive(false);
+
+        var so = new SerializedObject(fx);
+        var arr = so.FindProperty("effects");
+        var types = new[] { FxType.Sparkle, FxType.Puff, FxType.Confetti };
+        var emitters = new[] { sparkle, puffFx, conf };
+        var pools = new[] { 4, 3, 2 };
+        arr.arraySize = types.Length;
+        for (int i = 0; i < types.Length; i++)
+        {
+            var el = arr.GetArrayElementAtIndex(i);
+            el.FindPropertyRelative("type").enumValueIndex = (int)types[i];
+            el.FindPropertyRelative("template").objectReferenceValue = emitters[i];
+            el.FindPropertyRelative("poolSize").intValue = pools[i];
+        }
+        so.FindProperty("ringTemplate").objectReferenceValue = ring;
+        so.FindProperty("ringPoolSize").intValue = 4;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    static ParticleImage Emitter(Transform parent, string name, Sprite sprite, int count, float speedMin, float speedMax, float lifeMin, float lifeMax,
+        float sizeMin, float sizeMax, Color colA, Color colB, float gravity, float radius, float spin)
+    {
+        var go = new GameObject(name, typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+        var rt = (RectTransform)go.transform; rt.sizeDelta = new Vector2(10, 10);
+        var pi = go.AddComponent<ParticleImage>();
+        pi.raycastTarget = false;
+        pi.sprite = sprite;
+        pi.PlayMode = AssetKits.ParticleImage.Enumerations.PlayMode.None;
+        pi.loop = false;
+        pi.duration = 0.1f;
+        pi.rateOverTime = 0f;
+        pi.AddBurst(0f, count);
+        pi.space = Simulation.Local;
+        pi.shape = EmitterShape.Circle;
+        pi.circleRadius = radius;
+        pi.emitOnSurface = false;
+        pi.startSpeed = new ParticleSystem.MinMaxCurve(speedMin, speedMax);
+        pi.speedOverLifetime = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0, 1), new Keyframe(1, 0.15f)));
+        pi.lifetime = new ParticleSystem.MinMaxCurve(lifeMin, lifeMax);
+        var size = new SeparatedMinMaxCurve(1f); size.mainCurve = new ParticleSystem.MinMaxCurve(sizeMin, sizeMax); pi.startSize = size;
+        pi.sizeOverLifetime = new SeparatedMinMaxCurve(new AnimationCurve(new Keyframe(0, 0.4f), new Keyframe(0.15f, 1f), new Keyframe(1, 0f)));
+        var rot = new SeparatedMinMaxCurve(0f); rot.mainCurve = new ParticleSystem.MinMaxCurve(0f, 360f); pi.startRotation = rot;
+        var spinCurve = new SeparatedMinMaxCurve(0f); spinCurve.mainCurve = new ParticleSystem.MinMaxCurve(-spin, spin); pi.rotationOverLifetime = spinCurve;
+        pi.startColor = new ParticleSystem.MinMaxGradient(colA, colB);
+        var fade = new Gradient();
+        fade.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+                     new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 0.6f), new GradientAlphaKey(0, 1) });
+        pi.colorOverLifetime = new ParticleSystem.MinMaxGradient(fade);
+        pi.gravityEnabled = gravity != 0f;
+        pi.gravity = new ParticleSystem.MinMaxCurve(gravity);
+        return pi;
+    }
+
+    static Gradient RainbowGradient()
+    {
+        var g = new Gradient();
+        g.SetKeys(new[] { new GradientColorKey(Hex("#FF8A80"), 0f), new GradientColorKey(Hex("#FFD54F"), 0.25f), new GradientColorKey(Hex("#81C784"), 0.5f),
+                          new GradientColorKey(Hex("#64B5F6"), 0.75f), new GradientColorKey(Hex("#BA68C8"), 1f) },
+                  new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) });
+        return g;
+    }
+
     static MergeItemView BuildItemView(Transform parent, string name, float size, bool withName)
     {
         var bg = Img(parent, name, null, Color.white); Round(bg, 24);

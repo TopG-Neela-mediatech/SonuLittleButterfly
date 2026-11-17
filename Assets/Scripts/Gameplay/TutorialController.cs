@@ -56,7 +56,13 @@ namespace tmkoc.butterfly
         {
             levelActive = true;
             forced = levelController != null && levelController.CurrentLevel != null && levelController.CurrentLevel.isTutorial;
-            if (forced) ShowHint(); else RestartIdleTimer();
+            if (forced) { StopIdleTimer(); idleRoutine = StartCoroutine(ShowAfterIntro()); } else RestartIdleTimer();
+        }
+        private IEnumerator ShowAfterIntro()
+        {
+            HideHand();
+            yield return new WaitForSeconds(levelController != null ? levelController.IntroDuration + 0.1f : 0f);
+            if (levelActive && forced) ShowHint();
         }
         public void OnLevelRestarted() => OnLevelStart();
         private void OnLevelEnd() { levelActive = false; HideHand(); StopIdleTimer(); }

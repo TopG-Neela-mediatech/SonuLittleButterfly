@@ -27,6 +27,12 @@ namespace tmkoc.butterfly
         [SerializeField] private TextMeshProUGUI hintText;
         [SerializeField] private Button restartButton;
 
+        [Header("Intro (slides in at level start)")]
+        [SerializeField] private RectTransform levelPill;
+        [SerializeField] private RectTransform goalsRect;
+        [SerializeField] private RectTransform boardRect;
+        [SerializeField] private float introDuration = 1.1f;
+
         [Header("Timing")]
         [SerializeField] private float deliverDelay = 0.9f;
         [SerializeField] private float flightDuration = 0.8f;
@@ -36,11 +42,16 @@ namespace tmkoc.butterfly
         public MergeBoard Board => board;
         public GardenView Garden => garden;
         public bool IsBusy => busy;
+        public float IntroDuration => introDuration;
 
         private readonly Dictionary<int, int> remaining = new Dictionary<int, int>();
         private readonly Dictionary<int, int> initial = new Dictionary<int, int>();
         private int levelIndex, totalLevels;
         private bool busy;
+        private MergeItemView flyer;      // reused for every goal delivery
+        private Vector2 levelPillHome, boardHome, objectiveHome;
+        private bool homesCaptured;
+        private Sequence introSeq;
 
         private void Awake()
         {
@@ -81,16 +92,66 @@ namespace tmkoc.butterfly
                 initial[g.tier] = remaining[g.tier];
             }
 
-            if (levelLabel != null) levelLabel.text = $"LEVEL {index + 1} / {total}";
+            if (levelLabel != null) levelLabel.text = $"LEVEL {index + 1}";
             if (objectiveText != null) objectiveText.text = def.objective;
-            if (instructionText != null) instructionText.text = "Tap or drag two matching items to merge them!";
-            if (hintText != null) hintText.text = "Match two items of the same kind to grow them.";
+            if (instructionText != null) instructionText.gameObject.SetActive(false);
+            if (hintText != null) hintText.gameObject.SetActive(false);
 
             board.Setup(def, theme);
             goalsPanel?.Setup(def.goals, theme, board.FallbackSprite);
-            garden.SetCaption(theme != null ? theme.gardenCaption : "");
+            garden.SetCaption("");
             garden.ShowStage(theme != null ? theme.stage : LifeStage.Egg, Progress());
+            PlayIntro();
         }
+
+        /// <summary>Level start: the garden creatures fly/crawl in, the board slides up, the HUD drops in, items pop.</summary>
+        private void PlayIntro()
+        {
+            CaptureHomes();
+            introSeq?.Kill(true);
+            busy = true;
+            board.Locked = true;
+            introSeq = DOTween.Sequence();
+            float h = ((RectTransform)transform).rect.height;
+            if (levelPill != null)
+            {
+                levelPill.anchoredPosition = levelPillHome + new Vector2(0f, 320f);
+                introSeq.Insert(0f, levelPill.DOAnchorPos(levelPillHome, 0.5f).SetEase(Ease.OutBack));
+            }
+            if (objectiveText != null)
+            {
+                var ort = objectiveText.rectTransform;
+                ort.anchoredPosition = objectiveHome + new Vector2(0f, 60f);
+                objectiveText.alpha = 0f;
+                introSeq.Insert(0.2f, ort.DOAnchorPos(objectiveHome, 0.4f).SetEase(Ease.OutCubic));
+                introSeq.Insert(0.2f, objectiveText.DOFade(1f, 0.4f));
+            }
+            if (boardRect != null)
+            {
+                boardRect.anchoredPosition = boardHome - new Vector2(0f, h);
+                introSeq.Insert(0.1f, boardRect.DOAnchorPos(boardHome, 0.6f).SetEase(Ease.OutBack, 0.9f));
+            }
+            if (goalsRect != null)
+            {
+                goalsRect.localScale = Vector3.zero;
+                introSeq.Insert(0.45f, goalsRect.DOScale(1f, 0.4f).SetEase(Ease.OutBack));
+            }
+            board.PlayItemsIntro(0.55f);
+            garden.PlayIntro(0.05f);
+            introSeq.AppendInterval(Mathf.Max(0f, introDuration - introSeq.Duration()));
+            introSeq.OnComplete(() => { busy = false; board.Locked = false; });
+        }
+
+        private void CaptureHomes()
+        {
+            if (homesCaptured) return;
+            homesCaptured = true;
+            if (levelPill != null) levelPillHome = levelPill.anchoredPosition;
+            if (boardRect != null) boardHome = boardRect.anchoredPosition;
+            if (objectiveText != null) objectiveHome = objectiveText.rectTransform.anchoredPosition;
+        }
+
+        private void OnDestroy() => introSeq?.Kill();
 
         public void Restart()
         {
@@ -107,20 +168,15 @@ namespace tmkoc.butterfly
             return total == 0 ? 1f : Mathf.Clamp01((float)(total - left) / total);
         }
 
-        private void HandleMoved() { if (hintText != null) hintText.text = "Now merge two matching items."; }
+        private void HandleMoved() => GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Move);
 
-        private void HandleInvalidMove()
-        {
-            if (hintText != null) hintText.text = "Find two matching items to merge.";
-            GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Wrong);
-        }
+        private void HandleInvalidMove() => GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Wrong);
 
         private void HandleMerged(int tier, int cell)
         {
             GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Merge);
             GameManager.Instance?.InvokeItemMerged(tier);
             bool goal = remaining.TryGetValue(tier, out var left) && left > 0;
-            if (hintText != null) hintText.text = goal ? "Great match! Watch what happens..." : "Wonderful! Keep merging.";
             if (!goal) return;
             busy = true;
             board.Locked = true;
@@ -134,7 +190,7 @@ namespace tmkoc.butterfly
             var target = garden.DeliveryTarget;
             if (source != null && target != null && flightLayer != null)
             {
-                var flyer = Instantiate(board.ItemTemplate, flightLayer);
+                if (flyer == null) flyer = Instantiate(board.ItemTemplate, flightLayer);
                 flyer.gameObject.SetActive(true);
                 flyer.Apply(tier, CurrentTheme, board.FallbackSprite);
                 var frt = flyer.Rect;
@@ -149,7 +205,8 @@ namespace tmkoc.butterfly
                 var cg = flyer.GetComponent<CanvasGroup>();
                 if (cg != null) seq.Join(cg.DOFade(0.25f, flightDuration));
                 yield return seq.WaitForCompletion();
-                Destroy(flyer.gameObject);
+                if (cg != null) cg.alpha = 1f;
+                flyer.gameObject.SetActive(false);
             }
             else
             {
@@ -161,11 +218,15 @@ namespace tmkoc.butterfly
             goalsPanel?.SetCollected(tier, initial[tier] - remaining[tier]);
             garden.SetProgress(Progress());
             garden.PlayDeliveryPop();
+            if (UiFx.Instance != null && target != null)
+            {
+                UiFx.Instance.Play(FxType.Confetti, target.position);
+                UiFx.Instance.Ring(target.position, 360f, new Color(1f, 0.95f, 0.6f, 0.85f));
+            }
             GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Deliver);
             GameManager.Instance?.SoundManager?.PlayGoalDelivered();
             int totalLeft = 0; foreach (var kv in remaining) totalLeft += kv.Value;
             GameManager.Instance?.InvokeGoalDelivered(tier, totalLeft);
-            if (hintText != null) hintText.text = "Yay! You helped the garden grow!";
 
             if (totalLeft == 0)
             {

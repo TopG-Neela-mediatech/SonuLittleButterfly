@@ -1,3 +1,4 @@
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -51,8 +52,8 @@ namespace tmkoc.butterfly
                 icon.color = placeholder && theme != null ? theme.tint : Color.white;
                 icon.preserveAspect = true;
                 // Tier-based size so every tier reads differently even with placeholder art.
-                float s = 0.55f + 0.13f * (tier - 1);
-                icon.rectTransform.localScale = Vector3.one * s;
+                if (isSelected) { selectTween?.Kill(); selectTween = null; isSelected = false; }
+                icon.rectTransform.localScale = Vector3.one * IconScale(tier);
             }
             if (nameLabel != null)
             {
@@ -62,10 +63,26 @@ namespace tmkoc.butterfly
             if (tierLabel != null) tierLabel.text = tier.ToString();
         }
 
+        private bool isSelected;
+        private Tween selectTween;
+
+        /// <summary>Selected items gently bob (scale pulse on the icon) instead of changing colour.</summary>
         public void SetSelected(bool selected)
         {
-            if (background != null) background.color = selected ? new Color(1f, 0.85f, 0.55f) : Color.white;
+            if (selected == isSelected) return;
+            isSelected = selected;
+            selectTween?.Kill();
+            selectTween = null;
+            if (icon == null) return;
+            var baseScale = Vector3.one * IconScale(Tier);
+            icon.rectTransform.localScale = baseScale;
+            if (selected)
+                selectTween = icon.rectTransform.DOScale(baseScale * 1.14f, 0.35f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
         }
+
+        private static float IconScale(int tier) => 0.66f + 0.11f * (tier - 1);
+
+        private void OnDisable() { selectTween?.Kill(); selectTween = null; isSelected = false; }
 
         public void SetRaycast(bool on)
         {

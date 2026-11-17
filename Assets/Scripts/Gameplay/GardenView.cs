@@ -75,7 +75,51 @@ namespace tmkoc.butterfly
             if (caterpillar != null) caterpillarHome = caterpillar.anchoredPosition;
         }
 
-        public void SetCaption(string text) { if (caption != null) caption.text = text; }
+        /// <summary>Story caption: only shown while a stage transformation plays; empty hides the pill.</summary>
+        public void SetCaption(string text)
+        {
+            if (caption == null) return;
+            caption.text = text;
+            var pill = caption.transform.parent as RectTransform;
+            if (pill == null || pill == transform) return;
+            bool show = !string.IsNullOrEmpty(text);
+            if (show == pill.gameObject.activeSelf) { if (show) { pill.DOKill(true); pill.DOPunchScale(Vector3.one * 0.06f, 0.3f, 5, 0.5f); } return; }
+            pill.DOKill();
+            if (show) { pill.gameObject.SetActive(true); pill.localScale = new Vector3(0.6f, 0.6f, 1f); pill.DOScale(1f, 0.35f).SetEase(Ease.OutBack); }
+            else pill.gameObject.SetActive(false);
+        }
+
+        /// <summary>Level start: creatures fly / crawl in from off screen, plants and props pop up.</summary>
+        public void PlayIntro(float delay)
+        {
+            if (butterfly != null && butterfly.gameObject.activeSelf)
+            {
+                idleTween?.Kill();
+                butterfly.DOKill();
+                butterfly.anchoredPosition = butterflyHome + new Vector2(750f, 420f);
+                butterfly.localRotation = Quaternion.Euler(0f, 0f, 18f);
+                butterfly.DOAnchorPos(butterflyHome, 1.05f).SetDelay(delay).SetEase(Ease.OutSine).OnComplete(StartIdle);
+                butterfly.DOLocalRotate(Vector3.zero, 1.05f).SetDelay(delay).SetEase(Ease.OutSine);
+            }
+            if (caterpillar != null && caterpillar.gameObject.activeSelf)
+            {
+                caterpillar.anchoredPosition = caterpillarHome - new Vector2(800f, 0f);
+                caterpillar.DOAnchorPos(caterpillarHome, 1f).SetDelay(delay).SetEase(Ease.OutQuad);
+            }
+            Pop(plant, delay + 0.1f);
+            Pop(branch, delay + 0.25f);
+            Pop(chrysalis, delay + 0.4f);
+            for (int i = 0; i < flowers.Length; i++) Pop(flowers[i], delay + 0.15f + i * 0.08f);
+        }
+
+        private static void Pop(RectTransform r, float delay)
+        {
+            if (r == null || !r.gameObject.activeSelf) return;
+            r.DOKill(true);
+            var target = r.localScale;
+            r.localScale = Vector3.zero;
+            r.DOScale(target, 0.5f).SetDelay(delay).SetEase(Ease.OutBack);
+        }
 
         /// <summary>Static layout for a stage at a given goal progress (0..1).</summary>
         public void ShowStage(LifeStage newStage, float progress)
@@ -254,7 +298,7 @@ namespace tmkoc.butterfly
                     seq.AppendInterval(0.5f);
                     break;
             }
-            seq.OnComplete(() => { StartIdle(); done?.Invoke(); });
+            seq.OnComplete(() => { SetCaption(""); StartIdle(); done?.Invoke(); });
         }
 
         private Tween DayNightCycle(float duration)
@@ -287,6 +331,8 @@ namespace tmkoc.butterfly
             idleTween?.Kill();
             idleTween = null;
             foreach (var r in new[] { plant, branch, egg, caterpillar, chrysalis, butterfly }) if (r != null) r.DOKill();
+            if (flowers != null) foreach (var f in flowers) if (f != null) f.DOKill();
+            if (butterfly != null) butterfly.localRotation = Quaternion.identity;
             if (nightOverlay != null) nightOverlay.DOKill();
         }
 

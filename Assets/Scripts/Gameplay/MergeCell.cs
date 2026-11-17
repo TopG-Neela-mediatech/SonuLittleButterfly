@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -27,6 +28,20 @@ namespace tmkoc.butterfly
         {
             if (outline != null) outline.enabled = on;
         }
+
+        /// <summary>Quick colour flash (wrong move feedback).</summary>
+        public void Flash(Color color)
+        {
+            if (background == null) return;
+            if (!hasBaseColor) { baseColor = background.color; hasBaseColor = true; }
+            background.DOKill();
+            background.color = baseColor;
+            background.DOColor(color, 0.12f).SetLoops(2, LoopType.Yoyo).OnComplete(() => background.color = baseColor);
+        }
+        private Color baseColor;
+        private bool hasBaseColor;
+
+        private void OnDestroy() { if (background != null) background.DOKill(); }
 
         public void OnPointerClick(PointerEventData eventData) => board?.OnCellTapped(this);
     }

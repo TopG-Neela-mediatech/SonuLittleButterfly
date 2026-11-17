@@ -65,13 +65,14 @@ namespace tmkoc.butterfly
                 {
                     c.go.transform.DOKill(true);
                     c.go.transform.DOPunchScale(Vector3.one * 0.15f, 0.4f, 6, 0.6f);
+                    UiFx.Instance?.Play(FxType.Sparkle, c.icon != null ? c.icon.transform.position : c.go.transform.position);
                 }
             }
         }
 
         private void Refresh(Chip c, int collected)
         {
-            if (c.count != null) c.count.text = $"{collected} / {c.total} collected";
+            if (c.count != null) c.count.text = $"{collected}/{c.total}";
             if (c.bg != null) c.bg.color = collected >= c.total ? doneColor : pendingColor;
         }
     }
