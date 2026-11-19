@@ -32,7 +32,7 @@ MonoBehaviour:
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
   - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 60e128150cc0328449f0d7c4415c2f95, type: 3}
+    foregroundSprite: {fileID: 21300000, guid: e2074da34ad89fb48ac5b445531c3cf3, type: 3}
     captionText: Help Sonu care for the tree and watch the butterfly grow, from a
       tiny egg to a beautiful butterfly!
     displayDuration: 4

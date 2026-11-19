@@ -12,15 +12,16 @@ namespace tmkoc.butterfly
     ///   2 Caterpillar - the caterpillar eats on that leaf and grows, then crawls onto the branch.
     ///   3 Chrysalis   - the branch grows longer and sprouts leaves while the caterpillar waits; then chrysalis, days, butterfly.
     ///   4 Butterfly   - water grows the flowering bushes; the butterfly drinks nectar.
-    /// Camera: a level starts zoomed out and zooms in; the level end zooms back out.
-    ///   Levels 1-3: the tree is anchored to the garden's bottom-left and its scene layout IS the zoomed-in framing (trunk at the
-    ///   left edge, branch across). Zooming out slides and scales it until the whole tree stands on the ground.
+    /// Camera: never zooms out. Each level starts on the scene layout and zooms in (PlayIntro); rounds and the level end stay zoomed in.
+    ///   Levels 1-3: the tree (TreeRoot: shadow + tree image + branch) is anchored to the garden's top-left. Its scene layout is the
+    ///   level-start framing (trunk on the left edge, branch across, canopy at the top - the reference mock-up). Zooming in scales it
+    ///   up a little and slides the trunk out to the left until the branch, from the stump to its last leaf, fills the width, centred.
     ///   Level 4: the tree is hidden; the bush holder (anchored bottom-centre) scales up from small to its scene size.
     /// </summary>
     public class GardenView : MonoBehaviour
     {
         [Header("Props")]
-        [Tooltip("Tree image: parent of the branch holder. Anchored and pivoted bottom-left; its scene position/scale is the zoomed-in view.")]
+        [Tooltip("TreeRoot: shadow + tree image (+ branch). Pivot bottom-left, anchored top-left; its scene position/scale is the level-start view.")]
         [SerializeField] private RectTransform tree;
         [SerializeField] private RectTransform branch;
         [SerializeField] private RectTransform egg;
@@ -40,8 +41,9 @@ namespace tmkoc.butterfly
         [Tooltip("Spot on top of the branch where the fed caterpillar waits during the Chrysalis stage.")]
         [SerializeField] private RectTransform caterpillarBranchSeat;
         [SerializeField] private float caterpillarFullScale = 1.1f;
-        [Tooltip("Branch length (fill) in stages 1-2; it must reach the caterpillar seat and the chrysalis.")]
-        [SerializeField, Range(0f, 1f)] private float branchStubFill = 0.65f;
+        [Tooltip("Branch length (fill) in stages 1-2. 1 = the whole branch is there from the start; level 3 then only sprouts the extra leaves. " +
+                 "Below 1 the branch starts short (it must still reach the caterpillar seat and the chrysalis) and grows during level 3.")]
+        [SerializeField, Range(0f, 1f)] private float branchStubFill = 1f;
         [Tooltip("Chrysalis-stage progress at which the branch reaches its full length.")]
         [SerializeField, Range(0.05f, 1f)] private float branchFullAt = 0.6f;
         [Tooltip("Leaves on the twig tips.")]
@@ -55,16 +57,21 @@ namespace tmkoc.butterfly
         [SerializeField, Range(0.1f, 1f)] private float dryLeafScale = 0.7f;
 
         [Header("Zoom")]
-        [Tooltip("Garden space kept free at the top for the level pill and round dots.")]
-        [SerializeField] private float topReserve = 210f;
         [SerializeField] private float sidePadding = 20f;
+        [Tooltip("Tree-local x where the branch leaves the trunk (FullTreeNew stump). Zooming in fits from here to the last leaf.")]
+        [SerializeField] private float branchStartX = 398f;
+        [Tooltip("Zoom-in never scales the tree more than this times its level-start scale.")]
+        [SerializeField] private float maxZoomIn = 1.3f;
+        [Tooltip("Garden width the scene layout was made for. Narrower gardens shrink the level-start framing about the top-left anchor.")]
+        [SerializeField] private float layoutWidth = 1080f;
         [Tooltip("Level 4: parent of the two bushes, anchored bottom-centre; its scene scale is the zoomed-in view.")]
         [SerializeField] private RectTransform bushHolder;
         [SerializeField, Range(0.1f, 1f)] private float bushZoomOutScale = 0.55f;
-        [Tooltip("Extra tree-local margin around the branch when measuring the whole-tree view.")]
+        [Tooltip("Extra tree-local margin around the branch and its leaves when fitting the zoom-in.")]
         [SerializeField] private float branchFocusMargin = 20f;
-        [SerializeField] private float zoomInDuration = 1.6f;
-        [SerializeField] private float zoomOutDuration = 1.4f;
+        [SerializeField] private float zoomInDuration = 2.4f;
+        [Tooltip("Ease of the level-start zoom-in (a slow start and a soft landing).")]
+        [SerializeField] private Ease zoomEase = Ease.InOutSine;
 
         [Header("Bushes (Butterfly stage)")]
         [SerializeField, Range(0.1f, 1f)] private float bushStartScale = 0.7f;
@@ -98,7 +105,7 @@ namespace tmkoc.butterfly
         private Vector3[] leafScales;
         private Image[] leafImages;
 
-        private float zoomT = 1f; // 0 = zoomed out, 1 = zoomed in (the scene layout)
+        private float zoomT = 1f; // 0 = level-start (scene layout), 1 = zoomed in on the branch
         private Vector2 treeInPos, bushInPos;
         private Vector3 treeInScale = Vector3.one, bushInScale = Vector3.one;
         private Tween zoomTween;
@@ -110,8 +117,8 @@ namespace tmkoc.butterfly
         private void Awake()
         {
             var t = transform;
-            if (tree == null) tree = t.Find("TreeImage") as RectTransform;
-            if (branchHolder == null && tree != null) branchHolder = tree.Find("BranchHolder") as RectTransform;
+            if (tree == null) tree = t.Find("TreeRoot") as RectTransform;
+            if (branchHolder == null && tree != null) branchHolder = tree.Find("TreeImage/BranchHolder") as RectTransform;
             if (branch == null && branchHolder != null) branch = branchHolder.Find("Branch") as RectTransform;
             if (branchImage == null && branch != null) branchImage = branch.GetComponent<Image>();
             if (caterpillarBranchSeat == null && branchHolder != null) caterpillarBranchSeat = branchHolder.Find("CaterpillarSeat") as RectTransform;
@@ -165,7 +172,7 @@ namespace tmkoc.butterfly
         {
             SetZoomInstant(0f);
             ZoomTo(1f, zoomInDuration, delay + 0.5f);
-            float propDelay = delay + 0.5f + zoomInDuration * 0.8f;
+            float propDelay = delay + 0.5f + zoomInDuration * 0.6f; // creatures pop in as the zoom settles
             if (butterfly != null && butterfly.gameObject.activeSelf)
             {
                 idleTween?.Kill();
@@ -361,10 +368,10 @@ namespace tmkoc.butterfly
             focusReady = true;
         }
 
-        /// <summary>Slides and scales the anchored tree (or, in level 4, the bush holder) between zoomed out (0) and its scene layout (1).</summary>
+        /// <summary>Slides and scales the tree (or, in level 4, the bush holder) between its scene layout (0) and zoomed in (1).</summary>
         private void ApplyZoom()
         {
-            float t = Mathf.SmoothStep(0f, 1f, zoomT);
+            float t = Mathf.Clamp01(zoomT); // easing comes from the tween (zoomEase)
             if (stage == LifeStage.Butterfly)
             {
                 if (bushHolder == null) return;
@@ -374,25 +381,43 @@ namespace tmkoc.butterfly
                 return;
             }
             if (tree == null) return;
-            ZoomedOutTree(out var outScale, out var outPos);
+            StartTree(out var startScale, out var startPos);
+            ZoomedInTree(startScale, startPos, out var inScale, out var inPos);
             // scale on a log curve so the zoom speed feels even; position follows the same curve
-            float k = Mathf.Exp(Mathf.Lerp(Mathf.Log(outScale), Mathf.Log(treeInScale.x), t));
-            float f = Mathf.Abs(treeInScale.x - outScale) > 1e-4f ? (k - outScale) / (treeInScale.x - outScale) : t;
+            float k = Mathf.Exp(Mathf.Lerp(Mathf.Log(startScale), Mathf.Log(inScale), t));
+            float f = Mathf.Abs(inScale - startScale) > 1e-4f ? (k - startScale) / (inScale - startScale) : t;
             tree.localScale = new Vector3(k, k, 1f);
-            tree.anchoredPosition = Vector2.Lerp(outPos, treeInPos, f);
+            tree.anchoredPosition = Vector2.Lerp(startPos, inPos, f);
         }
 
-        /// <summary>The whole tree (plus the branch reaching past its right edge) standing on the garden's ground, centred.</summary>
-        private void ZoomedOutTree(out float scale, out Vector2 pos)
+        /// <summary>Level-start framing: the scene layout, shrunk about the top-left anchor when the garden is narrower than it was made for.</summary>
+        private void StartTree(out float scale, out Vector2 anchoredPos)
+        {
+            float w = ((RectTransform)transform).rect.width;
+            float f = layoutWidth > 1f && w > 1f ? Mathf.Min(1f, w / layoutWidth) : 1f;
+            scale = treeInScale.x * f;
+            anchoredPos = treeInPos * f;
+        }
+
+        /// <summary>
+        /// Zoomed in: the branch from the stump (branchStartX) to its last leaf fills the garden width, centred; the trunk slides
+        /// out to the left. The branch keeps its height on screen from the level-start layout, so the zoom feels anchored on it.
+        /// </summary>
+        private void ZoomedInTree(float startScale, Vector2 startAnchoredPos, out float scale, out Vector2 anchoredPos)
         {
             EnsureFocus();
+            scale = startScale; anchoredPos = startAnchoredPos;
+            if (!focusReady) return;
             var g = ((RectTransform)transform).rect;
-            var treeRect = new Rect(0f, 0f, tree.rect.width, tree.rect.height);
-            var focus = focusReady ? Rect.MinMaxRect(Mathf.Min(0f, branchFocus.xMin), 0f, Mathf.Max(treeRect.xMax, branchFocus.xMax), treeRect.yMax) : treeRect;
-            var target = new Rect(sidePadding, 0f, g.width - 2f * sidePadding, g.height - topReserve * 0.8f);
-            scale = Mathf.Min(target.width / Mathf.Max(1f, focus.width), target.height / Mathf.Max(1f, focus.height));
-            // tree anchored/pivoted at the garden's bottom-left: centre it horizontally, roots on the ground
-            pos = new Vector2(target.center.x - focus.center.x * scale, target.yMin - focus.yMin * scale);
+            var focus = Rect.MinMaxRect(Mathf.Max(branchFocus.xMin, branchStartX), branchFocus.yMin, branchFocus.xMax, branchFocus.yMax);
+            float fit = (g.width - 2f * sidePadding) / Mathf.Max(1f, focus.width);
+            scale = Mathf.Clamp(fit, startScale, startScale * maxZoomIn);
+            // positions below are measured from the garden's bottom-left; the tree's anchor may be elsewhere (top-left)
+            var anchorRef = new Vector2(tree.anchorMin.x * g.width, tree.anchorMin.y * g.height);
+            var startPos = startAnchoredPos + anchorRef;
+            float branchY = startPos.y + focus.center.y * startScale; // where the branch sits at level start
+            var pos = new Vector2(g.width * 0.5f - focus.center.x * scale, branchY - focus.center.y * scale);
+            anchoredPos = pos - anchorRef;
         }
 
         private void SetZoomInstant(float t)
@@ -405,7 +430,7 @@ namespace tmkoc.butterfly
         private Tween ZoomTo(float t, float duration, float delay = 0f)
         {
             zoomTween?.Kill();
-            zoomTween = DOTween.To(() => zoomT, v => { zoomT = v; ApplyZoom(); }, t, duration).SetDelay(delay).SetEase(Ease.Linear);
+            zoomTween = DOTween.To(() => zoomT, v => { zoomT = v; ApplyZoom(); }, t, duration).SetDelay(delay).SetEase(zoomEase);
             return zoomTween;
         }
 
@@ -422,7 +447,7 @@ namespace tmkoc.butterfly
             if (fed != null && fed.gameObject.activeInHierarchy) fed.DOPunchRotation(new Vector3(0f, 0f, 6f), 0.45f, 6, 0.6f);
         }
 
-        /// <summary>Stage gratification animation (on the branch), then the camera zooms out to the whole tree. Calls done when finished.</summary>
+        /// <summary>Stage gratification animation (on the branch, still zoomed in). Calls done when finished.</summary>
         public void PlayStageTransform(Action done)
         {
             KillTweens();
@@ -529,10 +554,9 @@ namespace tmkoc.butterfly
                     seq.AppendInterval(0.5f);
                     break;
             }
-            // level end: zoom out to the whole tree before the win panel; the next level zooms back in (PlayIntro)
+            // level end stays zoomed in; only the next level's start zooms (whole tree -> branch, in PlayIntro)
             seq.AppendCallback(() => SetCaption(""));
-            seq.Append(ZoomTo(0f, zoomOutDuration));
-            seq.AppendInterval(0.8f);
+            seq.AppendInterval(0.5f);
             seq.OnComplete(() => { StartIdle(); done?.Invoke(); });
         }
 
