@@ -43,7 +43,8 @@ public static class ButterflySceneBuilder
 
     // Sonu's Little Butterfly art (Assets/ImportedAssets/SonuButterflyAsset)
     const string ArtRoot = "Assets/ImportedAssets/SonuButterflyAsset/";
-    const string BgArtPath = ArtRoot + "BG_1.png";
+    const string BgArtPath = ArtRoot + "BG_3.png";
+    const string TreeArtPath = ArtRoot + "FullTree.png";
     const string ButterflyArtPath = ArtRoot + "Assets/Butterfly.png";
     const string CaterpillarArtPath = ArtRoot + "Assets/Caterpillar.png";
     const string ChrysalisArtPath = ArtRoot + "Assets/Chrysalis.png";
@@ -63,7 +64,6 @@ public static class ButterflySceneBuilder
     const string DryLeafArtPath = ArtRoot + "Plant/Dry leaf.png";
     const string DryHalfLeafArtPath = ArtRoot + "Plant/Dry half leaf.png";
 
-    const float BranchTop = 235f; // garden branch top edge below the garden top (clears the level pill and restart button)
 
     static readonly Color Cream = Hex("#FFF9EB");
     static readonly Color HeadingGreen = Hex("#588367");
@@ -77,7 +77,7 @@ public static class ButterflySceneBuilder
     static TMP_FontAsset font;
     static Sprite circle, rounded, cloud, resetIcon, star, storyBg, sonu, sonuSmall;
     static Sprite backBtn, restartBtn, handSprite, frameRound, framePill;
-    static Sprite bgArt, butterflyArt, caterpillarArt, chrysalisArt, eggOnLeafArt, eggArt, waterDropArt, bushesArt, bushes2Art;
+    static Sprite treeArt, bgArt, butterflyArt, caterpillarArt, chrysalisArt, eggOnLeafArt, eggArt, waterDropArt, bushesArt, bushes2Art;
     static Sprite branchArt, gardenBranchArt, branchLeafArt, branchDryLeafArt, plantArt, halfPlantArt, freshLeafArt, freshHalfLeafArt, dryLeafArt, dryHalfLeafArt;
 
     [MenuItem("Tools/Sonu Butterfly/Build Scene")]
@@ -140,38 +140,39 @@ public static class ButterflySceneBuilder
         var level1 = Empty(levelMain, "Level1"); Stretch(level1);
         var levelController = level1.gameObject.AddComponent<ButterflyLevelController>();
 
-        // Garden (top 40%): sky, Gokuldham gate and bushes come from BG_1 behind it; only the life-cycle props live here.
+        // Garden (top 40%): sky and hedge come from BG_3 behind it. Everything happens on one branch growing out of the tree;
+        // GardenView zooms the tree between "whole tree" and "branch" (TreeImage is bottom-left anchored and pivoted, art px units).
         var gardenRt = Empty(level1, "GardenView");
         SetField(bgAligner, "gardenView", gardenRt);
         gardenRt.anchorMin = new Vector2(0, 0.6f); gardenRt.anchorMax = Vector2.one; gardenRt.offsetMin = gardenRt.offsetMax = Vector2.zero;
         var garden = gardenRt.gameObject.AddComponent<GardenView>();
-        var sunGlow = Img(gardenRt, "SunGlow", circle, new Color(1f, 0.95f, 0.74f, 0.6f)); Place(sunGlow.rectTransform, new Vector2(1, 1), new Vector2(-170, -230), new Vector2(240, 240)); sunGlow.raycastTarget = false;
-        // flowers (bushes) first so the plant and creatures draw in front of them
-        // Butterfly stage: two flowering bushes that grow with progress (GardenView scales them, pivot at the base)
-        var flowers = new RectTransform[2];
-        float[] flowerX = { 260, 820 };
-        for (int i = 0; i < flowers.Length; i++) flowers[i] = Prop(gardenRt, "Flower" + i, i % 2 == 0 ? bushesArt : bushes2Art, new Vector2(0, 0), new Vector2(flowerX[i], 10), new Vector2(560, 560), new Vector2(0.5f, 0.15f));
-        // Garden branch (Ref_4.png): reaches in from the left edge across the top of the garden and grows with Chrysalis progress.
-        // Art is 1624x680 shown at 0.65 scale; twig tips below are art pixels * 0.65.
-        const float BranchScale = 0.65f;
-        // BranchHolder carries the branch, its leaves and the chrysalis; GardenView scales it down so the branch and leaves
-        // never run past the right edge on narrow phones (e.g. Pixel 5). Top-left anchored/pivoted: it grows in from the left.
-        var branchHolder = Empty(gardenRt, "BranchHolder");
-        branchHolder.anchorMin = branchHolder.anchorMax = branchHolder.pivot = new Vector2(0, 1);
-        branchHolder.anchoredPosition = new Vector2(0, -BranchTop); branchHolder.sizeDelta = new Vector2(1624 * BranchScale, 680 * BranchScale);
+        var tree = Prop(gardenRt, "TreeImage", treeArt, Vector2.zero, Vector2.zero, new Vector2(1024, 1380), Vector2.zero); // FullTree.png native size
+
+        // Branch_2 (1624x680 art) grows out of the knot on the right of the trunk (FullTree px ~385,748) into the empty space.
+        // Inside the holder everything keeps the old layout units (art px * 0.65); the holder itself is scaled 0.6 into tree px.
+        const float BranchScale = 0.65f, HolderScale = 0.6f;
+        var branchHolder = Empty(tree, "BranchHolder");
+        branchHolder.anchorMin = branchHolder.anchorMax = Vector2.zero; branchHolder.pivot = new Vector2(0, 1);
+        branchHolder.sizeDelta = new Vector2(1624 * BranchScale, 680 * BranchScale);
+        branchHolder.localScale = new Vector3(HolderScale, HolderScale, 1);
+        // branch base (art 30,615) on the knot: tree-local y is measured up from the bottom (1380 - 748)
+        var knot = new Vector2(385f, 1380f - 748f);
+        branchHolder.anchoredPosition = knot - new Vector2(30 * BranchScale, -615 * BranchScale) * HolderScale;
         var branch = Prop(branchHolder, "Branch", gardenBranchArt, new Vector2(0, 1), Vector2.zero, new Vector2(1624 * BranchScale, 680 * BranchScale), new Vector2(0, 1));
         var branchImg = branch.GetComponent<Image>();
         branchImg.type = Image.Type.Filled; branchImg.fillMethod = Image.FillMethod.Horizontal; branchImg.fillOrigin = (int)Image.OriginHorizontal.Left; branchImg.fillAmount = 1f;
-        // (twig tip in art px, angle, length, mirrored, progress it appears at); mirrored leaves point left
+        // (twig tip in art px, angle, length, mirrored, when it appears); mirrored leaves point left.
+        // Negative "at" = on the branch from stage 1 (watered from dry to green). Leaf1 is the big leaf for the egg and caterpillar.
         var leafDefs = new (Vector2 tip, float angle, float len, bool mirror, float at)[]
         {
-            (new Vector2(700, 262), -40f, 150f, true, 0.12f),
-            (new Vector2(880, 215), 55f, 175f, false, 0.28f),
-            (new Vector2(1250, 445), -20f, 150f, false, 0.45f),
-            (new Vector2(1445, 15), 5f, 130f, false, 0.62f), // points sideways so it stays below the restart button
+            (new Vector2(700, 262), -40f, 150f, true, -1f),
+            (new Vector2(880, 215), 12f, 210f, false, -1f),
+            (new Vector2(1250, 445), -20f, 150f, false, 0.3f),
+            (new Vector2(1445, 15), 30f, 140f, false, 0.55f),
             (new Vector2(1600, 255), 5f, 140f, false, 0.8f),
         };
         var branchLeaves = new Object[leafDefs.Length]; var leafAt = new float[leafDefs.Length];
+        RectTransform bigLeaf = null;
         for (int i = 0; i < leafDefs.Length; i++)
         {
             var d = leafDefs[i];
@@ -179,34 +180,30 @@ public static class ButterflySceneBuilder
             leaf.localScale = new Vector3(d.mirror ? -1 : 1, 1, 1);
             leaf.localRotation = Quaternion.Euler(0, 0, d.angle);
             branchLeaves[i] = leaf; leafAt[i] = d.at;
+            if (i == 1) bigLeaf = leaf;
         }
-        var plant = Prop(gardenRt, "Plant", plantArt, new Vector2(0.5f, 0), new Vector2(-170, 15), new Vector2(340, 271), new Vector2(0.5f, 0));
-        var plantLeafL = Prop(plant, "LeafLeft", dryLeafArt, new Vector2(0, 0), new Vector2(10, 30), new Vector2(150, 100), new Vector2(0.5f, 0.5f));
-        var plantLeafR = Prop(plant, "LeafRight", dryHalfLeafArt, new Vector2(1, 0), new Vector2(-5, 35), new Vector2(140, 78), new Vector2(0.5f, 0.5f));
-        plantLeafR.localScale = new Vector3(-1, 1, 1);
-        // Egg and caterpillar are children of the plant, anchored to the top edge of its biggest leaf (Plant_01.png is 594x474;
-        // that leaf's top edge peaks around art x 200..250, y 5). Pivots sit at the bottom of the visible art so they rest on the
-        // leaf, tilted to the leaf's slope. Being children, they follow the plant's scale and pop.
-        // seat = middle of the leaf's upper face (art ~200,70), so they rest on the leaf instead of its rim
-        var leafSeat = new Vector2(200f / 594f, 1f - 70f / 474f);
-        const float LeafTilt = 18f;
-        var egg = Prop(plant, "Egg", eggArt, leafSeat, Vector2.zero, new Vector2(270, 270), new Vector2(0.5f, 1f - 693f / 1024f));        // Egg_2 art bottom at y 693
-        egg.localRotation = Quaternion.Euler(0, 0, LeafTilt);
-        var cat = Prop(plant, "Caterpillar", caterpillarArt, leafSeat, Vector2.zero, new Vector2(190, 190), new Vector2(0.5f, 1f - 810f / 1024f)); // feet at y ~810
-        cat.localRotation = Quaternion.Euler(0, 0, LeafTilt);
-        // Level 3: the fed caterpillar lies along the top of the trunk (top edge ~art y 320 at x 800, 350 at x 1000), inside
+        // Egg and caterpillar sit on the top centre of the big leaf (Leaf.png 425x290: top edge peaks at x 220, y ~1).
+        // Pivots are at the bottom of the visible art so they rest on the leaf; they follow the leaf's tilt and scale.
+        var leafSeat = new Vector2(220f / 425f, 1f - 10f / 290f);
+        var egg = Prop(bigLeaf, "Egg", eggArt, leafSeat, Vector2.zero, new Vector2(230, 230), new Vector2(0.5f, 1f - 693f / 1024f));          // Egg_2 art bottom at y 693
+        var cat = Prop(bigLeaf, "Caterpillar", caterpillarArt, leafSeat, Vector2.zero, new Vector2(190, 190), new Vector2(0.5f, 1f - 810f / 1024f)); // feet at y ~810
+        // Level 3: the fed caterpillar lies along the top of the branch (top edge ~art y 320 at x 800, 350 at x 1000), inside
         // the stub (fill 0.65 = art x 1056). The seat is a little below the edge so its feet sink into the bark, tilted to the slope.
         var catSeat = Empty(branchHolder, "CaterpillarSeat");
         catSeat.anchorMin = catSeat.anchorMax = new Vector2(0, 1); catSeat.pivot = new Vector2(0.5f, 0.5f);
         catSeat.anchoredPosition = new Vector2(880 * BranchScale, -352 * BranchScale); catSeat.sizeDelta = new Vector2(10, 10);
         catSeat.localRotation = Quaternion.Euler(0, 0, -8f);
-        // hangs under the trunk at art (1000, 405) - inside the stub the caterpillar climbs onto (fill 0.65 = art x 1056).
-        // Pivot at the top of the visible chrysalis (art y 46) so it hangs from the branch.
+        // hangs under the branch at art (1000, 405); pivot at the top of the visible chrysalis (art y 46)
         var chry = Prop(branchHolder, "Chrysalis", chrysalisArt, new Vector2(0, 1), new Vector2(1000 * BranchScale, -405 * BranchScale), new Vector2(190, 190), new Vector2(0.5f, 1f - 46f / 1024f));
+
+        // Butterfly stage: two flowering bushes on the ground in front of the tree, growing with progress (pivot at the base)
+        var flowers = new RectTransform[2];
+        float[] flowerX = { 230, 850 };
+        for (int i = 0; i < flowers.Length; i++) flowers[i] = Prop(gardenRt, "Flower" + i, i % 2 == 0 ? bushesArt : bushes2Art, new Vector2(0, 0), new Vector2(flowerX[i], 0), new Vector2(420, 420), new Vector2(0.5f, 0.15f));
         var bfly = Prop(gardenRt, "Butterfly", butterflyArt, new Vector2(0.5f, 0.5f), new Vector2(230, 80), new Vector2(200, 200), new Vector2(0.5f, 0.5f));
         var night = Img(gardenRt, "NightOverlay", null, new Color(0.1f, 0.12f, 0.3f, 0f)); night.raycastTarget = false;
         night.rectTransform.anchorMin = new Vector2(0, -2f); night.rectTransform.anchorMax = new Vector2(1, 1.5f); night.rectTransform.offsetMin = night.rectTransform.offsetMax = Vector2.zero; // garden is 40% of the screen: -1.5 reaches the bottom
-        var deliveryTarget = Empty(gardenRt, "DeliveryTarget"); Place(deliveryTarget, new Vector2(0.5f, 0), new Vector2(-170, 150), new Vector2(10, 10));
+        var deliveryTarget = Empty(gardenRt, "DeliveryTarget"); Place(deliveryTarget, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10, 10));
         var levelPill = Img(gardenRt, "LevelPill", null, Hex("#FFFDF1")); Pill(levelPill, 90); Place(levelPill.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -112), new Vector2(260, 90));
         var dotsRt = Empty(gardenRt, "RoundDots"); Place(dotsRt, new Vector2(0.5f, 1), new Vector2(0, -178), new Vector2(200, 30));
         var dotsLayout = dotsRt.gameObject.AddComponent<HorizontalLayoutGroup>(); dotsLayout.spacing = 16; dotsLayout.childAlignment = TextAnchor.MiddleCenter;
@@ -219,6 +216,7 @@ public static class ButterflySceneBuilder
             roundDots[i] = dot;
         }
         var levelText = Text(levelPill.rectTransform, "LevelText", "LEVEL 1", 36, Hex("#658267"), TextAlignmentOptions.Center); Stretch(levelText.rectTransform, 30, 12);
+        levelText.color = Hex("#657867"); // label colour picked in the scene
         var captionPill = Img(gardenRt, "CaptionPill", null, new Color(1f, 0.99f, 0.945f, 0.92f)); Pill(captionPill, 90);
         captionPill.rectTransform.anchorMin = new Vector2(0, 1); captionPill.rectTransform.anchorMax = new Vector2(1, 1); captionPill.rectTransform.offsetMin = new Vector2(200, -285); captionPill.rectTransform.offsetMax = new Vector2(-200, -195);
         var captionText = Text(captionPill.rectTransform, "Caption", "", 28, Hex("#648261"), TextAlignmentOptions.Center); Stretch(captionText.rectTransform, 45, 10);
@@ -230,21 +228,18 @@ public static class ButterflySceneBuilder
         restartImg.rectTransform.anchoredPosition = new Vector2(-50, -50); restartImg.rectTransform.sizeDelta = new Vector2(125, 125);
         var restartButton = restartImg.gameObject.AddComponent<Button>();
 
-        SetField(garden, "plant", plant); SetField(garden, "plantImage", plant.GetComponent<Image>());
+        SetField(garden, "tree", tree);
         SetField(garden, "branch", branch); SetField(garden, "egg", egg); SetField(garden, "caterpillar", cat);
         SetField(garden, "chrysalis", chry); SetField(garden, "butterfly", bfly); SetField(garden, "flowers", flowers);
-        SetField(garden, "sunGlow", sunGlow.rectTransform); SetField(garden, "nightOverlay", night); SetField(garden, "deliveryTarget", deliveryTarget); SetField(garden, "caption", captionText);
-        SetField(garden, "plantGrowthSprites", new Object[] { halfPlantArt, plantArt });
-        SetField(garden, "plantLeaves", new Object[] { plantLeafL.GetComponent<Image>(), plantLeafR.GetComponent<Image>() });
-        SetField(garden, "dryLeafSprites", new Object[] { dryLeafArt, dryHalfLeafArt });
-        SetField(garden, "freshLeafSprites", new Object[] { freshLeafArt, freshHalfLeafArt });
+        SetField(garden, "nightOverlay", night); SetField(garden, "deliveryTarget", deliveryTarget); SetField(garden, "caption", captionText);
         SetField(garden, "branchImage", branchImg); SetField(garden, "branchHolder", branchHolder); SetField(garden, "caterpillarBranchSeat", catSeat); SetField(garden, "branchLeaves", branchLeaves);
         SetFloats(garden, "branchLeafThresholds", leafAt);
+        SetField(garden, "dryLeafSprite", branchDryLeafArt); SetField(garden, "freshLeafSprite", branchLeafArt);
 
         // Game panel (bottom 60%)
         var gamePanel = Empty(level1, "GamePanel");
         gamePanel.anchorMin = Vector2.zero; gamePanel.anchorMax = new Vector2(1, 0.6f); gamePanel.offsetMin = gamePanel.offsetMax = Vector2.zero;
-        var objective = Text(gamePanel, "Objective", "Water the small plant.", 46, Hex("#2F5E36"), TextAlignmentOptions.Center); StretchX(objective.rectTransform, -60, 80, 40); objective.enableAutoSizing = true; objective.fontSizeMin = 28; objective.fontSizeMax = 46;
+        var objective = Text(gamePanel, "Objective", "Water the dry leaves.", 46, Hex("#2F5E36"), TextAlignmentOptions.Center); StretchX(objective.rectTransform, -60, 80, 40); objective.enableAutoSizing = true; objective.fontSizeMin = 28; objective.fontSizeMax = 46;
 
         var goalsRt = Empty(gamePanel, "Goals"); StretchX(goalsRt, -170, 120, 20);
         var hlg = goalsRt.gameObject.AddComponent<HorizontalLayoutGroup>(); hlg.spacing = 16; hlg.childAlignment = TextAnchor.MiddleCenter; hlg.childControlWidth = false; hlg.childControlHeight = false; hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
@@ -389,9 +384,9 @@ public static class ButterflySceneBuilder
         db.mainLevels = new[]
         {
             M("Grow a healthy leaf!", MergeTheme.Water,
-                L("Water the small plant.", MergeTheme.Water, 3, 3, G(2, 1)),
-                L("Give the plant more water.", MergeTheme.Water, 3, 3, G(2, 2)),
-                L("Help the plant grow healthy leaves.", MergeTheme.Water, 3, 3, G(3, 1)),
+                L("Water the dry leaves.", MergeTheme.Water, 3, 3, G(2, 1)),
+                L("Give the leaves more water.", MergeTheme.Water, 3, 3, G(2, 2)),
+                L("Help the leaves grow big and green.", MergeTheme.Water, 3, 3, G(3, 1)),
                 L("Finish the butterfly's leaf home.", MergeTheme.Water, 3, 4, G(3, 2))),
             M("Feed the hungry caterpillar!", MergeTheme.Leaf,
                 L("Feed the baby caterpillar.", MergeTheme.Leaf, 3, 3, G(2, 2)),
@@ -463,7 +458,7 @@ public static class ButterflySceneBuilder
         EnsureSprite(FrameRoundPath, FrameRoundBorder); EnsureSprite(FramePillPath, FramePillBorder);
         frameRound = AssetDatabase.LoadAssetAtPath<Sprite>(FrameRoundPath); framePill = AssetDatabase.LoadAssetAtPath<Sprite>(FramePillPath);
         backBtn = LoadSprite(BackButtonPath); restartBtn = LoadSprite(RestartButtonPath); handSprite = LoadSprite(TutorialHandPath);
-        bgArt = LoadSprite(BgArtPath); butterflyArt = LoadSprite(ButterflyArtPath); caterpillarArt = LoadSprite(CaterpillarArtPath);
+        bgArt = LoadSprite(BgArtPath); treeArt = LoadSprite(TreeArtPath); butterflyArt = LoadSprite(ButterflyArtPath); caterpillarArt = LoadSprite(CaterpillarArtPath);
         chrysalisArt = LoadSprite(ChrysalisArtPath); eggOnLeafArt = LoadSprite(EggOnLeafArtPath); eggArt = LoadSprite(EggArtPath);
         waterDropArt = LoadSprite(WaterDropArtPath); bushesArt = LoadSprite(BushesArtPath); bushes2Art = LoadSprite(Bushes2ArtPath);
         branchArt = LoadSprite(BranchArtPath); gardenBranchArt = LoadSprite(GardenBranchArtPath); branchLeafArt = LoadSprite(BranchLeafArtPath); branchDryLeafArt = LoadSprite(BranchDryLeafArtPath);

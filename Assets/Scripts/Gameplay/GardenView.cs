@@ -7,55 +7,63 @@ using UnityEngine.UI;
 namespace tmkoc.butterfly
 {
     /// <summary>
-    /// The garden picture at the top of the screen. Props are Images using the SonuButterflyAsset art,
-    /// shown/hidden and tweened per life-cycle stage, mirroring drawScene()/transformScene() in the prototype.
-    /// Every prop is a serialized reference; missing ones are looked up by child name.
+    /// The garden at the top of the screen. Everything happens on one branch growing out of the tree (TreeImage):
+    ///   1 Egg         - the branch's two leaves are watered from dry to green; the butterfly lays an egg on the big leaf.
+    ///   2 Caterpillar - the caterpillar eats on that leaf and grows, then crawls onto the branch.
+    ///   3 Chrysalis   - the branch grows longer and sprouts leaves while the caterpillar waits; then chrysalis, days, butterfly.
+    ///   4 Butterfly   - water grows the flowering bushes; the butterfly drinks nectar.
+    /// Camera: a level starts on the whole tree and zooms in to the branch; the level end zooms back out to the tree.
+    /// The zoom fits rects (tree-local) into the garden rect, so it adapts to every screen size.
     /// </summary>
     public class GardenView : MonoBehaviour
     {
         [Header("Props")]
-        [SerializeField] private RectTransform plant;
-        [SerializeField] private Image plantImage;
+        [Tooltip("Tree image: parent of the branch holder. Bottom-left anchored and pivoted; scaled/moved by the zoom.")]
+        [SerializeField] private RectTransform tree;
         [SerializeField] private RectTransform branch;
         [SerializeField] private RectTransform egg;
         [SerializeField] private RectTransform caterpillar;
         [SerializeField] private RectTransform chrysalis;
         [SerializeField] private RectTransform butterfly;
         [SerializeField] private RectTransform[] flowers;
-        [SerializeField] private RectTransform sunGlow;
         [SerializeField] private Image nightOverlay;
         [SerializeField] private RectTransform deliveryTarget;
         [SerializeField] private TextMeshProUGUI caption;
 
-        [Header("Plant growth (Egg stage)")]
-        [Tooltip("Plant sprites from small to fully grown, picked by watering progress (e.g. Half Plant, Plant_01).")]
-        [SerializeField] private Sprite[] plantGrowthSprites;
-        [Tooltip("Leaves around the plant that turn from dry to fresh as the plant is watered.")]
-        [SerializeField] private Image[] plantLeaves;
-        [SerializeField] private Sprite[] dryLeafSprites;
-        [SerializeField] private Sprite[] freshLeafSprites;
-
-        [Header("Branch growth (Chrysalis stage)")]
-        [Tooltip("Filled (horizontal, origin left) image: the branch grows out from the left edge.")]
+        [Header("Branch")]
+        [Tooltip("Filled (horizontal, origin left) image: the branch grows out of the trunk.")]
         [SerializeField] private Image branchImage;
-        [Tooltip("Parent of the branch, its leaves and the chrysalis; scaled down so they stay inside the garden on narrow screens.")]
+        [Tooltip("Child of the tree: the branch, its leaves, the caterpillar seat and the chrysalis.")]
         [SerializeField] private RectTransform branchHolder;
-        [SerializeField] private float branchEdgeMargin = 12f;
-        [Tooltip("Spot on top of the branch stub where the fed caterpillar waits during the Chrysalis stage (child of Branch Holder).")]
+        [Tooltip("Spot on top of the branch where the fed caterpillar waits during the Chrysalis stage.")]
         [SerializeField] private RectTransform caterpillarBranchSeat;
         [SerializeField] private float caterpillarFullScale = 1.1f;
-        [Tooltip("Fill the caterpillar climbs onto at the end of the Caterpillar stage (must reach the chrysalis).")]
+        [Tooltip("Branch length (fill) in stages 1-2; it must reach the caterpillar seat and the chrysalis.")]
         [SerializeField, Range(0f, 1f)] private float branchStubFill = 0.65f;
-        [Tooltip("Stage progress at which the branch reaches its full length.")]
+        [Tooltip("Chrysalis-stage progress at which the branch reaches its full length.")]
         [SerializeField, Range(0.05f, 1f)] private float branchFullAt = 0.6f;
-        [Tooltip("Leaves on the twig tips, popped in as the branch grows.")]
+        [Tooltip("Leaves on the twig tips.")]
         [SerializeField] private RectTransform[] branchLeaves;
-        [Tooltip("Stage progress at which each leaf appears (same order as Branch Leaves).")]
+        [Tooltip("Chrysalis-stage progress at which each leaf appears. Negative = on the branch from the start (watered in stage 1).")]
         [SerializeField] private float[] branchLeafThresholds;
+        [Tooltip("Index in Branch Leaves of the big leaf the egg is laid on and the caterpillar eats on.")]
+        [SerializeField] private int eggLeafIndex = 1;
+        [SerializeField] private Sprite dryLeafSprite;
+        [SerializeField] private Sprite freshLeafSprite;
+        [SerializeField, Range(0.1f, 1f)] private float dryLeafScale = 0.7f;
 
-        [Header("Colors")]
-        [SerializeField] private Color dryPlantColor = new Color(1f, 0.93f, 0.7f);
-        [SerializeField] private Color healthyPlantColor = Color.white;
+        [Header("Zoom")]
+        [Tooltip("Garden space kept free at the top for the level pill and round dots.")]
+        [SerializeField] private float topReserve = 210f;
+        [SerializeField] private float sidePadding = 20f;
+        [SerializeField] private float bottomPadding = 30f;
+        [Tooltip("Extra tree-local margin around the branch when zoomed in.")]
+        [SerializeField] private float branchFocusMargin = 20f;
+        [SerializeField] private float zoomInDuration = 1.6f;
+        [SerializeField] private float zoomOutDuration = 1.4f;
+
+        [Header("Bushes (Butterfly stage)")]
+        [SerializeField, Range(0.1f, 1f)] private float bushStartScale = 0.6f;
 
         /// <summary>Where goal items fly to: the thing this stage is caring for.</summary>
         public RectTransform DeliveryTarget
@@ -64,20 +72,18 @@ namespace tmkoc.butterfly
             {
                 switch (stage)
                 {
-                    case LifeStage.Caterpillar: if (caterpillar != null) return caterpillar; break;
+                    case LifeStage.Egg: if (egg != null) return egg; break; // top of the big leaf
+                    case LifeStage.Caterpillar:
                     case LifeStage.Chrysalis: if (caterpillar != null) return caterpillar; break;
                     case LifeStage.Butterfly:
                         if (flowers != null && flowers.Length > 0 && flowers[deliveries % flowers.Length] != null) return flowers[deliveries % flowers.Length];
                         break;
                 }
-                return deliveryTarget != null ? deliveryTarget : plant;
+                return deliveryTarget;
             }
         }
 
-        [Header("Bushes (Butterfly stage)")]
-        [SerializeField, Range(0.1f, 1f)] private float bushStartScale = 0.6f;
         private int deliveries;
-
         private LifeStage stage;
         private Vector2 butterflyHome;
         private Vector2 caterpillarHome;
@@ -86,21 +92,25 @@ namespace tmkoc.butterfly
         private Vector2 caterpillarHomeAnchor;
         private Tween idleTween;
         private Vector3[] leafScales;
+        private Image[] leafImages;
+
+        private float zoomT = 1f; // 0 = whole tree, 1 = branch
+        private Tween zoomTween;
+        private Rect branchFocus;  // tree-local
+        private bool focusReady;
+
+        private RectTransform BigLeaf => branchLeaves != null && eggLeafIndex >= 0 && eggLeafIndex < branchLeaves.Length ? branchLeaves[eggLeafIndex] : null;
 
         private void Awake()
         {
             var t = transform;
-            if (plant == null) plant = t.Find("Plant") as RectTransform;
-            if (plantImage == null && plant != null) plantImage = plant.GetComponent<Image>();
-            if (branch == null) branch = t.Find("Branch") as RectTransform;
+            if (tree == null) tree = t.Find("TreeImage") as RectTransform;
+            if (branchHolder == null && tree != null) branchHolder = tree.Find("BranchHolder") as RectTransform;
+            if (branch == null && branchHolder != null) branch = branchHolder.Find("Branch") as RectTransform;
             if (branchImage == null && branch != null) branchImage = branch.GetComponent<Image>();
-            if (branchHolder == null) branchHolder = t.Find("BranchHolder") as RectTransform;
             if (caterpillarBranchSeat == null && branchHolder != null) caterpillarBranchSeat = branchHolder.Find("CaterpillarSeat") as RectTransform;
-            if (egg == null) egg = t.Find("Egg") as RectTransform;
-            if (caterpillar == null) caterpillar = t.Find("Caterpillar") as RectTransform;
-            if (chrysalis == null) chrysalis = t.Find("Chrysalis") as RectTransform;
+            if (chrysalis == null && branchHolder != null) chrysalis = branchHolder.Find("Chrysalis") as RectTransform;
             if (butterfly == null) butterfly = t.Find("Butterfly") as RectTransform;
-            if (sunGlow == null) sunGlow = t.Find("SunGlow") as RectTransform;
             if (nightOverlay == null) nightOverlay = t.Find("NightOverlay")?.GetComponent<Image>();
             if (deliveryTarget == null) deliveryTarget = t.Find("DeliveryTarget") as RectTransform;
             if (caption == null) caption = t.Find("CaptionPill/Caption")?.GetComponent<TextMeshProUGUI>();
@@ -114,7 +124,12 @@ namespace tmkoc.butterfly
             if (branchLeaves != null)
             {
                 leafScales = new Vector3[branchLeaves.Length];
-                for (int i = 0; i < branchLeaves.Length; i++) leafScales[i] = branchLeaves[i] != null ? branchLeaves[i].localScale : Vector3.one;
+                leafImages = new Image[branchLeaves.Length];
+                for (int i = 0; i < branchLeaves.Length; i++)
+                {
+                    leafScales[i] = branchLeaves[i] != null ? branchLeaves[i].localScale : Vector3.one;
+                    leafImages[i] = branchLeaves[i] != null ? branchLeaves[i].GetComponent<Image>() : null;
+                }
             }
             if (caterpillar != null)
             {
@@ -137,23 +152,23 @@ namespace tmkoc.butterfly
             else pill.gameObject.SetActive(false);
         }
 
-        /// <summary>Level start: creatures fly / crawl in from off screen, plants and props pop up.</summary>
+        /// <summary>Main level start: show the whole tree, then zoom in to the branch; the butterfly flies in, props pop.</summary>
         public void PlayIntro(float delay)
         {
+            SetZoomInstant(0f);
+            ZoomTo(1f, zoomInDuration, delay + 0.5f);
+            float propDelay = delay + 0.5f + zoomInDuration * 0.8f;
             if (butterfly != null && butterfly.gameObject.activeSelf)
             {
                 idleTween?.Kill();
                 butterfly.DOKill();
                 butterfly.anchoredPosition = butterflyHome + new Vector2(750f, 420f);
                 butterfly.localRotation = Quaternion.Euler(0f, 0f, 18f);
-                butterfly.DOAnchorPos(butterflyHome, 1.05f).SetDelay(delay).SetEase(Ease.OutSine).OnComplete(StartIdle);
-                butterfly.DOLocalRotate(Vector3.zero, 1.05f).SetDelay(delay).SetEase(Ease.OutSine);
+                butterfly.DOAnchorPos(butterflyHome, 1.05f).SetDelay(propDelay).SetEase(Ease.OutSine).OnComplete(StartIdle);
+                butterfly.DOLocalRotate(Vector3.zero, 1.05f).SetDelay(propDelay).SetEase(Ease.OutSine);
             }
-            Pop(plant, delay + 0.1f);
-            Pop(caterpillar, delay + 0.45f);
-            Pop(branch, delay + 0.25f);
-            Pop(chrysalis, delay + 0.4f);
-            for (int i = 0; i < flowers.Length; i++) Pop(flowers[i], delay + 0.15f + i * 0.08f);
+            Pop(caterpillar, propDelay);
+            for (int i = 0; i < flowers.Length; i++) Pop(flowers[i], propDelay + i * 0.1f);
         }
 
         private static void Pop(RectTransform r, float delay)
@@ -171,23 +186,19 @@ namespace tmkoc.butterfly
             KillTweens();
             stage = newStage;
             deliveries = 0;
-            FitBranch();
-            // only what the stage is about: 1 plant (dry -> green), 2 caterpillar eating on the plant, 3 caterpillar waiting on the
-            // growing branch, 4 two flowering bushes + butterfly. Egg, chrysalis and the mother / emerging butterfly appear only
-            // inside the end-of-stage sequences.
-            Show(plant, stage == LifeStage.Egg || stage == LifeStage.Caterpillar);
-            Show(branch, stage == LifeStage.Chrysalis);
+            if (zoomTween == null || !zoomTween.IsActive()) SetZoomInstant(1f);
+            // Egg, chrysalis and the mother / emerging butterfly appear only inside the end-of-stage sequences.
+            Show(branch, true);
             Show(egg, false);
             Show(caterpillar, stage == LifeStage.Caterpillar || stage == LifeStage.Chrysalis);
             Show(chrysalis, false);
             Show(butterfly, stage == LifeStage.Butterfly);
-            Show(sunGlow, false);
             if (flowers != null) foreach (var f in flowers) Show(f, stage == LifeStage.Butterfly);
             if (nightOverlay != null) nightOverlay.color = new Color(0.1f, 0.12f, 0.3f, 0f);
-            if (butterfly != null) butterfly.anchoredPosition = butterflyHome;
-            if (butterfly != null) butterfly.localScale = Vector3.one;
-            if (chrysalis != null) chrysalis.localScale = Vector3.one;
+            if (butterfly != null) { butterfly.anchoredPosition = butterflyHome; butterfly.localScale = Vector3.one; }
+            if (chrysalis != null) { chrysalis.localScale = Vector3.one; chrysalis.localRotation = Quaternion.identity; }
             if (branch != null) branch.localScale = Vector3.one;
+            if (egg != null) egg.localScale = Vector3.one;
             SeatCaterpillar(stage == LifeStage.Chrysalis);
             if (flowers != null) foreach (var f in flowers) if (f != null) f.localRotation = Quaternion.identity;
             SetProgress(progress);
@@ -201,14 +212,14 @@ namespace tmkoc.butterfly
             switch (stage)
             {
                 case LifeStage.Egg:
-                    if (plant != null) plant.localScale = Vector3.one * (0.75f + p * 0.25f);
-                    if (plantImage != null) plantImage.color = Color.Lerp(dryPlantColor, healthyPlantColor, p);
-                    SetPlantSprite(p);
-                    SetLeaves(p);
+                    SetBranchFill(branchStubFill);
+                    SetBranchLeaves(0f, true);
+                    SetLeafHealth(p);
                     break;
                 case LifeStage.Caterpillar:
-                    if (plant != null) plant.localScale = Vector3.one;
-                    if (plantImage != null) plantImage.color = healthyPlantColor;
+                    SetBranchFill(branchStubFill);
+                    SetBranchLeaves(0f, true);
+                    SetLeafHealth(1f);
                     if (caterpillar != null)
                     {
                         float cs = Mathf.Lerp(0.6f, caterpillarFullScale, p); // grows as it eats
@@ -223,9 +234,14 @@ namespace tmkoc.butterfly
                     break;
                 case LifeStage.Chrysalis:
                     if (caterpillar != null && !DOTween.IsTweening(caterpillar)) caterpillar.localScale = Vector3.one * caterpillarFullScale;
-                    SetBranchGrowth(p);
+                    SetBranchFill(Mathf.Lerp(branchStubFill, 1f, Mathf.Clamp01(p / branchFullAt)));
+                    SetBranchLeaves(p, true);
+                    SetLeafHealth(1f);
                     break;
                 case LifeStage.Butterfly:
+                    SetBranchFill(1f);
+                    SetBranchLeaves(1f, false);
+                    SetLeafHealth(1f);
                     float bush = Mathf.Lerp(bushStartScale, 1f, p);
                     foreach (var f in flowers)
                     {
@@ -236,49 +252,22 @@ namespace tmkoc.butterfly
                     }
                     break;
             }
-            if (stage != LifeStage.Egg) { SetPlantSprite(1f); SetLeaves(1f); }
         }
 
-        private void SetPlantSprite(float p)
+        // ---------------------------------------------------------------- branch
+        private void SetBranchFill(float fill)
         {
-            if (plantImage == null || plantGrowthSprites == null || plantGrowthSprites.Length == 0) return;
-            int i = Mathf.Clamp(Mathf.FloorToInt(p * plantGrowthSprites.Length), 0, plantGrowthSprites.Length - 1);
-            if (plantGrowthSprites[i] != null) plantImage.sprite = plantGrowthSprites[i];
+            if (branchImage == null) return;
+            branchImage.DOKill();
+            if (branch != null && branch.gameObject.activeInHierarchy && fill > branchImage.fillAmount + 0.001f)
+                branchImage.DOFillAmount(fill, 0.6f).SetEase(Ease.OutCubic);
+            else branchImage.fillAmount = fill;
         }
 
-        /// <summary>Leaf i turns fresh once progress passes (i+1)/(n+1).</summary>
-        private void SetLeaves(float p)
-        {
-            if (plantLeaves == null) return;
-            int n = plantLeaves.Length;
-            for (int i = 0; i < n; i++)
-            {
-                var leaf = plantLeaves[i];
-                if (leaf == null) continue;
-                bool fresh = p >= (i + 1f) / (n + 1f);
-                var arr = fresh ? freshLeafSprites : dryLeafSprites;
-                if (arr != null && i < arr.Length && arr[i] != null && leaf.sprite != arr[i])
-                {
-                    leaf.sprite = arr[i];
-                    if (fresh) { leaf.rectTransform.DOKill(true); leaf.rectTransform.DOPunchScale(Vector3.one * 0.2f, 0.4f, 5, 0.6f); }
-                }
-            }
-        }
+        private float LeafThreshold(int i) =>
+            branchLeafThresholds != null && i < branchLeafThresholds.Length ? branchLeafThresholds[i] : (i + 1f) / (branchLeaves.Length + 1f);
 
-        /// <summary>Branch grows from the stub to full length, then leaves pop out on the twig tips (see Branch/Ref_4.png).</summary>
-        private void SetBranchGrowth(float p)
-        {
-            if (branchImage != null)
-            {
-                float fill = Mathf.Lerp(branchStubFill, 1f, Mathf.Clamp01(p / branchFullAt));
-                branchImage.DOKill();
-                if (branch != null && branch.gameObject.activeInHierarchy && fill > branchImage.fillAmount + 0.001f)
-                    branchImage.DOFillAmount(fill, 0.6f).SetEase(Ease.OutCubic);
-                else branchImage.fillAmount = fill;
-            }
-            SetBranchLeaves(p, true);
-        }
-
+        /// <summary>Leaves with a negative threshold are always there; the rest pop out as the Chrysalis-stage branch grows.</summary>
         private void SetBranchLeaves(float p, bool animate)
         {
             if (branchLeaves == null) return;
@@ -286,8 +275,7 @@ namespace tmkoc.butterfly
             {
                 var leaf = branchLeaves[i];
                 if (leaf == null) continue;
-                float at = branchLeafThresholds != null && i < branchLeafThresholds.Length ? branchLeafThresholds[i] : (i + 1f) / (branchLeaves.Length + 1f);
-                bool on = p >= at;
+                bool on = LeafThreshold(i) < 0f || p >= LeafThreshold(i);
                 if (on == leaf.gameObject.activeSelf) continue;
                 leaf.DOKill();
                 leaf.gameObject.SetActive(on);
@@ -301,30 +289,121 @@ namespace tmkoc.butterfly
             }
         }
 
-        /// <summary>Quick pop when a goal item lands in the garden.</summary>
-        public void PlayDeliveryPop()
+        /// <summary>Stage 1: the branch's starting leaves go from small and dry to full and green as they are watered.</summary>
+        private void SetLeafHealth(float p)
         {
-            transform.DOKill(true);
-            transform.localScale = Vector3.one;
-            transform.DOPunchScale(Vector3.one * 0.04f, 0.5f, 5, 0.5f);
-            RectTransform fed = stage == LifeStage.Egg ? plant
-                : stage == LifeStage.Caterpillar ? caterpillar
-                : stage == LifeStage.Chrysalis ? caterpillar
-                : flowers != null && flowers.Length > 0 ? flowers[deliveries % flowers.Length] : null;
-            deliveries++;
-            if (fed != null && fed.gameObject.activeInHierarchy && stage == LifeStage.Egg)
+            if (branchLeaves == null) return;
+            int n = 0;
+            for (int i = 0; i < branchLeaves.Length; i++) if (LeafThreshold(i) < 0f) n++;
+            int k = 0;
+            for (int i = 0; i < branchLeaves.Length; i++)
             {
-                fed.DOKill(true);
-                fed.DOPunchScale(Vector3.one * 0.12f, 0.45f, 6, 0.6f);
-            }
-            else if (fed != null && fed.gameObject.activeInHierarchy)
-            {
-                // these also grow from SetProgress: punch on top of the growth tween without killing it
-                fed.DOPunchRotation(new Vector3(0f, 0f, 6f), 0.45f, 6, 0.6f);
+                if (LeafThreshold(i) >= 0f) continue;
+                var leaf = branchLeaves[i];
+                var img = leafImages != null && i < leafImages.Length ? leafImages[i] : null;
+                k++;
+                if (leaf == null) continue;
+                bool fresh = p >= k / (n + 1f);
+                var sp = fresh ? freshLeafSprite : dryLeafSprite;
+                if (img != null && sp != null && img.sprite != sp)
+                {
+                    bool turningGreen = fresh && img.sprite == dryLeafSprite;
+                    img.sprite = sp;
+                    if (turningGreen && leaf.gameObject.activeInHierarchy) leaf.DOPunchRotation(new Vector3(0f, 0f, 8f), 0.45f, 6, 0.6f);
+                }
+                var rest = leafScales != null && i < leafScales.Length ? leafScales[i] : Vector3.one;
+                var s = rest * Mathf.Lerp(dryLeafScale, 1f, p);
+                s.z = 1f;
+                if (!DOTween.IsTweening(leaf)) leaf.localScale = s;
             }
         }
 
-        /// <summary>Stage gratification animation (transformScene in the prototype). Calls done when finished.</summary>
+        // ---------------------------------------------------------------- zoom
+        /// <summary>Tree-local rect of the fully grown branch and its leaves (measured at rest, once).</summary>
+        private void EnsureFocus()
+        {
+            if (focusReady || tree == null || branchHolder == null) return;
+            var corners = new Vector3[4];
+            float xMin = float.MaxValue, yMin = float.MaxValue, xMax = float.MinValue, yMax = float.MinValue;
+            void Grow(RectTransform r)
+            {
+                if (r == null) return;
+                r.GetWorldCorners(corners);
+                foreach (var c in corners)
+                {
+                    var l = tree.InverseTransformPoint(c);
+                    xMin = Mathf.Min(xMin, l.x); xMax = Mathf.Max(xMax, l.x); yMin = Mathf.Min(yMin, l.y); yMax = Mathf.Max(yMax, l.y);
+                }
+            }
+            Grow(branch);
+            if (branchLeaves != null)
+                for (int i = 0; i < branchLeaves.Length; i++)
+                {
+                    var leaf = branchLeaves[i];
+                    if (leaf == null) continue;
+                    var keep = leaf.localScale;
+                    leaf.localScale = leafScales != null && i < leafScales.Length ? leafScales[i] : Vector3.one;
+                    Grow(leaf);
+                    leaf.localScale = keep;
+                }
+            if (xMin > xMax) return;
+            // tree-local coordinates are measured from the pivot (bottom-left)
+            branchFocus = Rect.MinMaxRect(xMin - branchFocusMargin, yMin - branchFocusMargin, xMax + branchFocusMargin, yMax + branchFocusMargin);
+            focusReady = true;
+        }
+
+        private void ApplyZoom()
+        {
+            if (tree == null) return;
+            EnsureFocus();
+            var g = ((RectTransform)transform).rect;
+            var treeRect = new Rect(0f, 0f, tree.rect.width, tree.rect.height);
+            var outTarget = new Rect(sidePadding, 0f, g.width - 2f * sidePadding, g.height - topReserve * 0.8f);
+            var inTarget = new Rect(sidePadding, bottomPadding, g.width - 2f * sidePadding, g.height - topReserve - bottomPadding);
+            float t = Mathf.SmoothStep(0f, 1f, zoomT);
+            var focus = focusReady ? LerpRect(treeRect, branchFocus, t) : treeRect;
+            var target = LerpRect(outTarget, inTarget, t);
+            float k = Mathf.Min(target.width / Mathf.Max(1f, focus.width), target.height / Mathf.Max(1f, focus.height));
+            tree.localScale = new Vector3(k, k, 1f);
+            // tree is anchored/pivoted at the garden's bottom-left: place the focus centre on the target centre,
+            // and for the whole tree keep its roots on the ground (bottom of the target)
+            var pos = target.center - focus.center * k;
+            float groundY = target.yMin - focus.yMin * k;
+            pos.y = Mathf.Lerp(groundY, pos.y, t);
+            tree.anchoredPosition = pos;
+        }
+
+        private static Rect LerpRect(Rect a, Rect b, float t) =>
+            Rect.MinMaxRect(Mathf.Lerp(a.xMin, b.xMin, t), Mathf.Lerp(a.yMin, b.yMin, t), Mathf.Lerp(a.xMax, b.xMax, t), Mathf.Lerp(a.yMax, b.yMax, t));
+
+        private void SetZoomInstant(float t)
+        {
+            zoomTween?.Kill();
+            zoomT = t;
+            ApplyZoom();
+        }
+
+        private Tween ZoomTo(float t, float duration, float delay = 0f)
+        {
+            zoomTween?.Kill();
+            zoomTween = DOTween.To(() => zoomT, v => { zoomT = v; ApplyZoom(); }, t, duration).SetDelay(delay).SetEase(Ease.Linear);
+            return zoomTween;
+        }
+
+        private void OnRectTransformDimensionsChange() { if (isActiveAndEnabled) ApplyZoom(); }
+
+        /// <summary>Quick pop when a goal item lands in the garden.</summary>
+        public void PlayDeliveryPop()
+        {
+            RectTransform fed = stage == LifeStage.Egg ? BigLeaf
+                : stage == LifeStage.Caterpillar || stage == LifeStage.Chrysalis ? caterpillar
+                : flowers != null && flowers.Length > 0 ? flowers[deliveries % flowers.Length] : null;
+            deliveries++;
+            // a wiggle doesn't fight the growth tweens that SetProgress starts on the same object
+            if (fed != null && fed.gameObject.activeInHierarchy) fed.DOPunchRotation(new Vector3(0f, 0f, 6f), 0.45f, 6, 0.6f);
+        }
+
+        /// <summary>Stage gratification animation (on the branch), then the camera zooms out to the whole tree. Calls done when finished.</summary>
         public void PlayStageTransform(Action done)
         {
             KillTweens();
@@ -332,15 +411,14 @@ namespace tmkoc.butterfly
             switch (stage)
             {
                 case LifeStage.Egg:
-                    // mother butterfly lands on the leaf, lays an egg, time passes, caterpillar hatches
+                    // mother butterfly lands on the big leaf, lays an egg, time passes, caterpillar hatches
                     Show(egg, false); Show(caterpillar, false);
-                    if (butterfly != null && (egg != null || plant != null))
+                    if (butterfly != null && egg != null)
                     {
                         Show(butterfly, true);
                         butterfly.localScale = Vector3.one;
                         butterfly.anchoredPosition = butterflyHome + new Vector2(750f, 420f);
-                        var spot = egg != null ? egg : plant;
-                        Vector3 landing = spot.TransformPoint(new Vector3(0f, spot.rect.height * 0.35f, 0f));
+                        Vector3 landing = egg.TransformPoint(new Vector3(0f, egg.rect.height * 0.35f, 0f));
                         seq.Append(butterfly.DOMove(landing, 1.2f).SetEase(Ease.InOutSine));
                     }
                     seq.AppendCallback(() => { Show(egg, true); if (egg != null) { egg.localScale = Vector3.zero; } SetCaption("The butterfly lays an egg on the healthy leaf!"); });
@@ -348,28 +426,24 @@ namespace tmkoc.butterfly
                     if (butterfly != null) seq.Append(butterfly.DOAnchorPos(butterflyHome + new Vector2(260f, 160f), 1.4f).SetEase(Ease.InSine));
                     seq.AppendCallback(() => Show(butterfly, false));
                     seq.Append(DayNightCycle(1.6f));
-                    seq.AppendCallback(() => { SetCaption("The egg hatches into a caterpillar!"); Show(caterpillar, true); if (caterpillar != null) caterpillar.localScale = Vector3.zero; });
+                    seq.AppendCallback(() => { SetCaption("The egg hatches into a caterpillar!"); SeatCaterpillar(false); Show(caterpillar, true); if (caterpillar != null) caterpillar.localScale = Vector3.zero; });
                     if (egg != null) seq.Append(egg.DOScale(0f, 0.4f).SetEase(Ease.InBack));
                     if (caterpillar != null) seq.Join(caterpillar.DOScale(0.6f, 0.6f).SetEase(Ease.OutBack));
+                    seq.AppendCallback(() => Show(egg, false));
                     seq.AppendInterval(0.8f);
                     break;
 
                 case LifeStage.Caterpillar:
-                    SetCaption("The caterpillar climbs to the branch...");
-                    Show(branch, true);
-                    SetBranchLeaves(0f, false);
-                    if (branch != null) branch.localScale = Vector3.one;
-                    if (branchImage != null) { branchImage.fillAmount = 0f; seq.Append(branchImage.DOFillAmount(branchStubFill, 1f).SetEase(Ease.OutCubic)); }
-                    else if (branch != null) { branch.localScale = new Vector3(0f, 1f, 1f); seq.Append(branch.DOScaleX(1f, 0.6f).SetEase(Ease.OutBack)); }
-                    // the big caterpillar climbs onto the stub and waits there; the chrysalis only forms once the branch is strong (Level 3)
+                    // the big caterpillar crawls off its leaf onto the branch and waits there; the chrysalis only forms once the branch is strong (Level 3)
+                    SetCaption("The caterpillar crawls onto the branch...");
                     if (caterpillar != null && caterpillarBranchSeat != null)
                     {
                         var seat = caterpillarBranchSeat;
-                        // match the seat's world scale while still parented to the plant, so re-parenting doesn't jump
+                        // match the seat's world scale while still parented to the leaf, so re-parenting doesn't jump
                         float k = caterpillar.parent != null ? seat.lossyScale.x / caterpillar.parent.lossyScale.x : 1f;
-                        seq.Append(caterpillar.DOMove(seat.position, 1.4f).SetEase(Ease.InOutSine));
-                        seq.Join(caterpillar.DORotateQuaternion(seat.rotation, 0.8f));
-                        seq.Join(caterpillar.DOScale(caterpillarFullScale * k, 1.4f));
+                        seq.Append(caterpillar.DOMove(seat.position, 1.6f).SetEase(Ease.InOutSine));
+                        seq.Join(caterpillar.DORotateQuaternion(seat.rotation, 0.9f));
+                        seq.Join(caterpillar.DOScale(caterpillarFullScale * k, 1.6f));
                         seq.AppendCallback(() => { SeatCaterpillar(true); caterpillar.localScale = Vector3.one * caterpillarFullScale; SetCaption("It waits on the branch. Let's make it strong!"); });
                         seq.Append(caterpillar.DOPunchScale(Vector3.one * 0.1f, 0.4f, 5, 0.5f));
                     }
@@ -380,7 +454,7 @@ namespace tmkoc.butterfly
                     SetCaption("The caterpillar hangs beneath the strong branch...");
                     if (caterpillar != null && chrysalis != null)
                     {
-                        // turn upside down and hang from the trunk where the chrysalis will form
+                        // turn upside down and hang from the branch where the chrysalis will form
                         seq.Append(caterpillar.DOMove(chrysalis.position, 1.1f).SetEase(Ease.InOutSine));
                         seq.Join(caterpillar.DOLocalRotate(new Vector3(0f, 0f, 180f), 1.1f));
                         seq.AppendCallback(() => { SetCaption("...and forms a chrysalis!"); Show(chrysalis, true); chrysalis.localScale = Vector3.zero; });
@@ -412,7 +486,7 @@ namespace tmkoc.butterfly
                         seq.Append(butterfly.DOAnchorPos(butterflyHome, 2f).SetEase(Ease.InOutSine));
                     }
                     seq.AppendCallback(() => Show(chrysalis, false));
-                    seq.AppendInterval(1.5f); // let it land before the win panel
+                    seq.AppendInterval(1f);
                     break;
 
                 case LifeStage.Butterfly:
@@ -433,7 +507,11 @@ namespace tmkoc.butterfly
                     seq.AppendInterval(0.5f);
                     break;
             }
-            seq.OnComplete(() => { SetCaption(""); StartIdle(); done?.Invoke(); });
+            // level end: zoom out to the whole tree before the win panel; the next level zooms back in (PlayIntro)
+            seq.AppendCallback(() => SetCaption(""));
+            seq.Append(ZoomTo(0f, zoomOutDuration));
+            seq.AppendInterval(0.8f);
+            seq.OnComplete(() => { StartIdle(); done?.Invoke(); });
         }
 
         private Tween DayNightCycle(float duration)
@@ -465,14 +543,15 @@ namespace tmkoc.butterfly
         {
             idleTween?.Kill();
             idleTween = null;
-            foreach (var r in new[] { plant, branch, egg, caterpillar, chrysalis, butterfly }) if (r != null) r.DOKill();
+            foreach (var r in new[] { branch, egg, caterpillar, chrysalis, butterfly }) if (r != null) r.DOKill();
             if (flowers != null) foreach (var f in flowers) if (f != null) f.DOKill();
+            if (branchLeaves != null) foreach (var l in branchLeaves) if (l != null) l.DOKill(true); // finish wiggles / pops in place
             if (butterfly != null) butterfly.localRotation = Quaternion.identity;
             if (nightOverlay != null) nightOverlay.DOKill();
             if (branchImage != null) branchImage.DOKill();
         }
 
-        /// <summary>Puts the caterpillar on the plant's big leaf (Caterpillar stage) or on top of the branch stub (Chrysalis stage).</summary>
+        /// <summary>Puts the caterpillar on the big leaf (Caterpillar stage) or on top of the branch (Chrysalis stage).</summary>
         private void SeatCaterpillar(bool onBranch)
         {
             if (caterpillar == null) return;
@@ -489,44 +568,12 @@ namespace tmkoc.butterfly
                 caterpillar.SetParent(caterpillarHomeParent, false);
                 caterpillar.anchorMin = caterpillar.anchorMax = caterpillarHomeAnchor;
                 caterpillar.anchoredPosition = caterpillarHome;
-                caterpillar.localRotation = caterpillarHomeRot; // tilted to sit on the leaf
+                caterpillar.localRotation = caterpillarHomeRot; // sits on the leaf's top edge
             }
         }
-
-        /// <summary>Scales BranchHolder so the fully grown branch and its leaves end inside the garden's right edge.</summary>
-        private void FitBranch()
-        {
-            if (branchHolder == null || branch == null) return;
-            var garden = (RectTransform)transform;
-            float right = 0f;
-            var corners = new Vector3[4];
-            void Grow(RectTransform r)
-            {
-                if (r == null) return;
-                r.GetWorldCorners(corners);
-                foreach (var c in corners) right = Mathf.Max(right, branchHolder.InverseTransformPoint(c).x);
-            }
-            // leaves may be mid-pop (scale 0): measure them at their resting scale
-            Grow(branch);
-            if (branchLeaves != null)
-                for (int i = 0; i < branchLeaves.Length; i++)
-                {
-                    var leaf = branchLeaves[i];
-                    if (leaf == null) continue;
-                    var keep = leaf.localScale;
-                    leaf.localScale = leafScales != null && i < leafScales.Length ? leafScales[i] : Vector3.one;
-                    Grow(leaf);
-                    leaf.localScale = keep;
-                }
-            float available = garden.rect.width - branchEdgeMargin - branchHolder.anchoredPosition.x;
-            float k = right > 1f ? Mathf.Min(1f, available / right) : 1f;
-            branchHolder.localScale = new Vector3(k, k, 1f);
-        }
-
-        private void OnRectTransformDimensionsChange() { if (isActiveAndEnabled) FitBranch(); }
 
         private static void Show(RectTransform r, bool on) { if (r != null) r.gameObject.SetActive(on); }
 
-        private void OnDisable() => KillTweens();
+        private void OnDisable() { KillTweens(); zoomTween?.Kill(); }
     }
 }

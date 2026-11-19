@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Story_Stage4_End
   m_EditorClassIdentifier: 
   slides:
-  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
     foregroundSprite: {fileID: 21300000, guid: 3e1fb1fb058b03140bf792639bff8eec, type: 3}
     captionText: The butterfly drinks nectar from the flowers you grew and flies
       happily around Gokuldham garden.
@@ -22,7 +22,7 @@ MonoBehaviour:
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
-  - backgroundSprite: {fileID: 21300000, guid: a5d1ae622da976c47b5154b77b9fb177, type: 3}
+  - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
     foregroundSprite: {fileID: 21300000, guid: 2ca137971aed1824080f065a7d88f67f, type: 3}
     captionText: 'Sonu: "We did it! Our tiny egg has become a beautiful butterfly!"
       Madhavi: "Now you know how a butterfly grows!"'

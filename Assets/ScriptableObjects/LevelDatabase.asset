@@ -81,7 +81,7 @@ MonoBehaviour:
   - title: Grow a healthy leaf!
     theme: 0
     subLevels:
-    - objective: Water the small plant.
+    - objective: Water the dry leaves.
       theme: 0
       columns: 3
       rows: 3
@@ -89,7 +89,7 @@ MonoBehaviour:
       - tier: 2
         count: 1
       isTutorial: 1
-    - objective: Give the plant more water.
+    - objective: Give the leaves more water.
       theme: 0
       columns: 3
       rows: 3
@@ -97,7 +97,7 @@ MonoBehaviour:
       - tier: 2
         count: 2
       isTutorial: 0
-    - objective: Help the plant grow healthy leaves.
+    - objective: Help the leaves grow big and green.
       theme: 0
       columns: 3
       rows: 3
