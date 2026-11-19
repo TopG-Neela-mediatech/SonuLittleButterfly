@@ -126,8 +126,22 @@ namespace tmkoc.butterfly
             GameManager.Instance.SoundManager?.PlayFinalOutro();
             GameManager.Instance.InvokeGameComplete();
             int awarded = AwardCompletionStars();
-            if (finalPanel != null) finalPanel.Show(awarded, ShowWinPanel);
-            else ShowWinPanel();
+            if (finalPanel != null) finalPanel.Show(awarded, FinishGame);
+            else FinishGame();
+        }
+
+        /// <summary>All four stages done. Inside the Playschool app the shared game-end panel pops up; standalone shows the win panel.</summary>
+        private void FinishGame()
+        {
+#if PLAYSCHOOL_MAIN
+            currentLevelIndex = TotalLevels;
+            HelperGameCategoryDataSaver.LevelCompleted(TotalLevels);
+            EffectParticleControll.Instance.SpawnGameEndPanel();
+            GameManager.Instance.SoundManager.StopBGM();
+            GameOverEndPanel.Instance.AddTheListnerRetryGame();
+#else
+            ShowWinPanel();
+#endif
         }
 
         private int AwardCompletionStars()

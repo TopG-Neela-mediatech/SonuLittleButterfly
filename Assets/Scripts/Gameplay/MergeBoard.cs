@@ -50,6 +50,7 @@ namespace tmkoc.butterfly
         public int SelectedIndex => selected;
 
         private int cols, rows;
+        public const int MaxSide = 4;
         private int[] tiles = new int[0];
         private readonly List<MergeCell> cells = new List<MergeCell>();
         private readonly Dictionary<int, MergeItemView> items = new Dictionary<int, MergeItemView>();
@@ -75,8 +76,8 @@ namespace tmkoc.butterfly
         public void Setup(LevelDefinition def, ThemeData themeData)
         {
             theme = themeData;
-            cols = Mathf.Max(2, def.columns);
-            rows = Mathf.Max(2, def.rows);
+            cols = Mathf.Clamp(def.columns, 2, MaxSide); // never bigger than 4x4
+            rows = Mathf.Clamp(def.rows, 2, MaxSide);
             selected = -1;
             Locked = false;
             ClearBoard();
