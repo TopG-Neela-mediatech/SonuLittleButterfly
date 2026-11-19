@@ -3,6 +3,8 @@ using UnityEngine;
 namespace tmkoc.butterfly
 {
     /// <summary>
+    /// Every voice key below is a "voiceover_title" row in AudioXL/Sonu's Little Butterfly - Audio Script.xlsx;
+    /// RuntimeAudioLoader looks clips up by that exact string.
     /// Voice lines are addressed by string key through RuntimeAudioLoader (downloaded per language);
     /// every Play* method returns the clip length so callers can pace the game, or -1 when missing.
     /// Local SFX use scene AudioSources. All calls are safe when RuntimeAudioLoader is absent
@@ -16,6 +18,9 @@ namespace tmkoc.butterfly
         [SerializeField] private SFXData[] sfxData;
 
         public enum SfxType { None, Merge, Move, Wrong, Deliver, StageComplete, Celebrate }
+
+        /// <summary>Narrated moments of the end-of-level animations in the garden (the caption pill shows the same line).</summary>
+        public enum GardenMoment { EggLaid, EggHatched, CaterpillarToBranch, ChrysalisForms, ChrysalisRests, ChrysalisMoving, ButterflyEmerges, ButterflyNectar }
 
         [System.Serializable]
         public class SFXData
@@ -73,6 +78,21 @@ namespace tmkoc.butterfly
         public float PlayWrongMove() => PlayRandom(audioMapper.wrongMove);
         public float PlayIdle() => PlayRandom(audioMapper.idle);
         public float PlayFinalOutro() => PlayKey(new[] { audioMapper.finalOutro }, 0);
+        public float PlayGardenMoment(GardenMoment moment)
+        {
+            string key = moment switch
+            {
+                GardenMoment.EggLaid => audioMapper.eggLaid,
+                GardenMoment.EggHatched => audioMapper.eggHatched,
+                GardenMoment.CaterpillarToBranch => audioMapper.caterpillarToBranch,
+                GardenMoment.ChrysalisForms => audioMapper.chrysalisForms,
+                GardenMoment.ChrysalisRests => audioMapper.chrysalisRests,
+                GardenMoment.ChrysalisMoving => audioMapper.chrysalisMoving,
+                GardenMoment.ButterflyEmerges => audioMapper.butterflyEmerges,
+                _ => audioMapper.butterflyNectar,
+            };
+            return PlayKey(new[] { key }, 0);
+        }
 
         public void StopVoice() => RuntimeAudioLoader.Instance?.StopCommonAudioSource();
 
@@ -110,5 +130,14 @@ namespace tmkoc.butterfly
         public string[] wrongMove = { "wrong1", "wrong2" };
         public string[] idle = { "idle1", "idle2" };
         public string finalOutro = "final_outro";
+        [Header("End-of-level garden moments (narrate the caption pill)")]
+        public string eggLaid = "egg_laid";
+        public string eggHatched = "egg_hatch";
+        public string caterpillarToBranch = "caterpillar_branch";
+        public string chrysalisForms = "chrysalis_form";
+        public string chrysalisRests = "chrysalis_rest";
+        public string chrysalisMoving = "chrysalis_move";
+        public string butterflyEmerges = "butterfly_emerge";
+        public string butterflyNectar = "butterfly_nectar";
     }
 }

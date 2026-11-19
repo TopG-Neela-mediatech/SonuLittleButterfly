@@ -107,6 +107,7 @@ namespace tmkoc.butterfly
                 initial[g.tier] = remaining[g.tier];
             }
 
+            SetTextBarVisible(true, false);
             if (levelLabel != null) levelLabel.text = $"LEVEL {index + 1}";
             if (objectiveText != null) objectiveText.text = def.objective;
             if (instructionText != null) instructionText.gameObject.SetActive(false);
@@ -229,7 +230,15 @@ namespace tmkoc.butterfly
 
         private void HandleMoved() => GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Move);
 
-        private void HandleInvalidMove() => GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Wrong);
+        private float lastWrongVoice = -100f;
+        private void HandleInvalidMove()
+        {
+            GameManager.Instance?.SoundManager?.PlaySFX(SoundManager.SfxType.Wrong);
+            // the gentle "find two that match" hint, at most every few seconds so repeated taps don't spam it
+            if (Time.time - lastWrongVoice < 4f) return;
+            lastWrongVoice = Time.time;
+            GameManager.Instance?.SoundManager?.PlayWrongMove();
+        }
 
         private void HandleMerged(int tier, int cell)
         {
@@ -306,7 +315,24 @@ namespace tmkoc.butterfly
             busy = true;
             board.Locked = true;
             RefreshDots(true); // last round's dot fills
+            SetTextBarVisible(false, true); // the garden animation plays without the objective / goal bar under it
             garden.PlayStageTransform(() => { busy = false; done?.Invoke(); });
+        }
+
+        /// <summary>Objective line + goal chips. Hidden while a level-end animation plays, shown again by InitializeLevel.</summary>
+        private void SetTextBarVisible(bool visible, bool animate)
+        {
+            foreach (var rt in new[] { objectiveText != null ? objectiveText.rectTransform : null, goalsRect })
+            {
+                if (rt == null) continue;
+                var cg = rt.GetComponent<CanvasGroup>();
+                if (cg == null) cg = rt.gameObject.AddComponent<CanvasGroup>();
+                cg.DOKill();
+                if (visible) { rt.gameObject.SetActive(true); cg.alpha = 1f; continue; }
+                if (!animate) { cg.alpha = 0f; rt.gameObject.SetActive(false); continue; }
+                var go = rt.gameObject;
+                cg.DOFade(0f, 0.35f).OnComplete(() => go.SetActive(false));
+            }
         }
     }
 }

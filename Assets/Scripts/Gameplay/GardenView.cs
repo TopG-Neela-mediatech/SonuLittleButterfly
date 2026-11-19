@@ -12,13 +12,15 @@ namespace tmkoc.butterfly
     ///   2 Caterpillar - the caterpillar eats on that leaf and grows, then crawls onto the branch.
     ///   3 Chrysalis   - the branch grows longer and sprouts leaves while the caterpillar waits; then chrysalis, days, butterfly.
     ///   4 Butterfly   - water grows the flowering bushes; the butterfly drinks nectar.
-    /// Camera: a level starts on the whole tree and zooms in to the branch; the level end zooms back out to the tree.
-    /// The zoom fits rects (tree-local) into the garden rect, so it adapts to every screen size.
+    /// Camera: a level starts zoomed out and zooms in; the level end zooms back out.
+    ///   Levels 1-3: the tree is anchored to the garden's bottom-left and its scene layout IS the zoomed-in framing (trunk at the
+    ///   left edge, branch across). Zooming out slides and scales it until the whole tree stands on the ground.
+    ///   Level 4: the tree is hidden; the bush holder (anchored bottom-centre) scales up from small to its scene size.
     /// </summary>
     public class GardenView : MonoBehaviour
     {
         [Header("Props")]
-        [Tooltip("Tree image: parent of the branch holder. Bottom-left anchored and pivoted; scaled/moved by the zoom.")]
+        [Tooltip("Tree image: parent of the branch holder. Anchored and pivoted bottom-left; its scene position/scale is the zoomed-in view.")]
         [SerializeField] private RectTransform tree;
         [SerializeField] private RectTransform branch;
         [SerializeField] private RectTransform egg;
@@ -56,14 +58,16 @@ namespace tmkoc.butterfly
         [Tooltip("Garden space kept free at the top for the level pill and round dots.")]
         [SerializeField] private float topReserve = 210f;
         [SerializeField] private float sidePadding = 20f;
-        [SerializeField] private float bottomPadding = 30f;
-        [Tooltip("Extra tree-local margin around the branch when zoomed in.")]
+        [Tooltip("Level 4: parent of the two bushes, anchored bottom-centre; its scene scale is the zoomed-in view.")]
+        [SerializeField] private RectTransform bushHolder;
+        [SerializeField, Range(0.1f, 1f)] private float bushZoomOutScale = 0.55f;
+        [Tooltip("Extra tree-local margin around the branch when measuring the whole-tree view.")]
         [SerializeField] private float branchFocusMargin = 20f;
         [SerializeField] private float zoomInDuration = 1.6f;
         [SerializeField] private float zoomOutDuration = 1.4f;
 
         [Header("Bushes (Butterfly stage)")]
-        [SerializeField, Range(0.1f, 1f)] private float bushStartScale = 0.6f;
+        [SerializeField, Range(0.1f, 1f)] private float bushStartScale = 0.7f;
 
         /// <summary>Where goal items fly to: the thing this stage is caring for.</summary>
         public RectTransform DeliveryTarget
@@ -94,7 +98,9 @@ namespace tmkoc.butterfly
         private Vector3[] leafScales;
         private Image[] leafImages;
 
-        private float zoomT = 1f; // 0 = whole tree, 1 = branch
+        private float zoomT = 1f; // 0 = zoomed out, 1 = zoomed in (the scene layout)
+        private Vector2 treeInPos, bushInPos;
+        private Vector3 treeInScale = Vector3.one, bushInScale = Vector3.one;
         private Tween zoomTween;
         private Rect branchFocus;  // tree-local
         private bool focusReady;
@@ -121,6 +127,8 @@ namespace tmkoc.butterfly
                 flowers = list.ToArray();
             }
             if (butterfly != null) butterflyHome = butterfly.anchoredPosition;
+            if (tree != null) { treeInPos = tree.anchoredPosition; treeInScale = tree.localScale; }
+            if (bushHolder != null) { bushInPos = bushHolder.anchoredPosition; bushInScale = bushHolder.localScale; }
             if (branchLeaves != null)
             {
                 leafScales = new Vector3[branchLeaves.Length];
@@ -168,7 +176,6 @@ namespace tmkoc.butterfly
                 butterfly.DOLocalRotate(Vector3.zero, 1.05f).SetDelay(propDelay).SetEase(Ease.OutSine);
             }
             Pop(caterpillar, propDelay);
-            for (int i = 0; i < flowers.Length; i++) Pop(flowers[i], propDelay + i * 0.1f);
         }
 
         private static void Pop(RectTransform r, float delay)
@@ -186,8 +193,10 @@ namespace tmkoc.butterfly
             KillTweens();
             stage = newStage;
             deliveries = 0;
-            if (zoomTween == null || !zoomTween.IsActive()) SetZoomInstant(1f);
+            if (zoomTween == null || !zoomTween.IsActive()) SetZoomInstant(1f); // rounds inside a level stay zoomed in
             // Egg, chrysalis and the mother / emerging butterfly appear only inside the end-of-stage sequences.
+            Show(tree, stage != LifeStage.Butterfly); // nectar level: just the bushes
+            if (bushHolder != null) bushHolder.gameObject.SetActive(stage == LifeStage.Butterfly);
             Show(branch, true);
             Show(egg, false);
             Show(caterpillar, stage == LifeStage.Caterpillar || stage == LifeStage.Chrysalis);
@@ -352,29 +361,39 @@ namespace tmkoc.butterfly
             focusReady = true;
         }
 
+        /// <summary>Slides and scales the anchored tree (or, in level 4, the bush holder) between zoomed out (0) and its scene layout (1).</summary>
         private void ApplyZoom()
         {
+            float t = Mathf.SmoothStep(0f, 1f, zoomT);
+            if (stage == LifeStage.Butterfly)
+            {
+                if (bushHolder == null) return;
+                // scale about the bottom-centre anchor: the bushes stay on the ground and grow toward the viewer
+                bushHolder.localScale = Vector3.Lerp(bushInScale * bushZoomOutScale, bushInScale, t);
+                bushHolder.anchoredPosition = bushInPos;
+                return;
+            }
             if (tree == null) return;
+            ZoomedOutTree(out var outScale, out var outPos);
+            // scale on a log curve so the zoom speed feels even; position follows the same curve
+            float k = Mathf.Exp(Mathf.Lerp(Mathf.Log(outScale), Mathf.Log(treeInScale.x), t));
+            float f = Mathf.Abs(treeInScale.x - outScale) > 1e-4f ? (k - outScale) / (treeInScale.x - outScale) : t;
+            tree.localScale = new Vector3(k, k, 1f);
+            tree.anchoredPosition = Vector2.Lerp(outPos, treeInPos, f);
+        }
+
+        /// <summary>The whole tree (plus the branch reaching past its right edge) standing on the garden's ground, centred.</summary>
+        private void ZoomedOutTree(out float scale, out Vector2 pos)
+        {
             EnsureFocus();
             var g = ((RectTransform)transform).rect;
             var treeRect = new Rect(0f, 0f, tree.rect.width, tree.rect.height);
-            var outTarget = new Rect(sidePadding, 0f, g.width - 2f * sidePadding, g.height - topReserve * 0.8f);
-            var inTarget = new Rect(sidePadding, bottomPadding, g.width - 2f * sidePadding, g.height - topReserve - bottomPadding);
-            float t = Mathf.SmoothStep(0f, 1f, zoomT);
-            var focus = focusReady ? LerpRect(treeRect, branchFocus, t) : treeRect;
-            var target = LerpRect(outTarget, inTarget, t);
-            float k = Mathf.Min(target.width / Mathf.Max(1f, focus.width), target.height / Mathf.Max(1f, focus.height));
-            tree.localScale = new Vector3(k, k, 1f);
-            // tree is anchored/pivoted at the garden's bottom-left: place the focus centre on the target centre,
-            // and for the whole tree keep its roots on the ground (bottom of the target)
-            var pos = target.center - focus.center * k;
-            float groundY = target.yMin - focus.yMin * k;
-            pos.y = Mathf.Lerp(groundY, pos.y, t);
-            tree.anchoredPosition = pos;
+            var focus = focusReady ? Rect.MinMaxRect(Mathf.Min(0f, branchFocus.xMin), 0f, Mathf.Max(treeRect.xMax, branchFocus.xMax), treeRect.yMax) : treeRect;
+            var target = new Rect(sidePadding, 0f, g.width - 2f * sidePadding, g.height - topReserve * 0.8f);
+            scale = Mathf.Min(target.width / Mathf.Max(1f, focus.width), target.height / Mathf.Max(1f, focus.height));
+            // tree anchored/pivoted at the garden's bottom-left: centre it horizontally, roots on the ground
+            pos = new Vector2(target.center.x - focus.center.x * scale, target.yMin - focus.yMin * scale);
         }
-
-        private static Rect LerpRect(Rect a, Rect b, float t) =>
-            Rect.MinMaxRect(Mathf.Lerp(a.xMin, b.xMin, t), Mathf.Lerp(a.yMin, b.yMin, t), Mathf.Lerp(a.xMax, b.xMax, t), Mathf.Lerp(a.yMax, b.yMax, t));
 
         private void SetZoomInstant(float t)
         {
@@ -421,12 +440,12 @@ namespace tmkoc.butterfly
                         Vector3 landing = egg.TransformPoint(new Vector3(0f, egg.rect.height * 0.35f, 0f));
                         seq.Append(butterfly.DOMove(landing, 1.2f).SetEase(Ease.InOutSine));
                     }
-                    seq.AppendCallback(() => { Show(egg, true); if (egg != null) { egg.localScale = Vector3.zero; } SetCaption("The butterfly lays an egg on the healthy leaf!"); });
+                    seq.AppendCallback(() => { Show(egg, true); if (egg != null) { egg.localScale = Vector3.zero; } SetCaption("The butterfly lays an egg on the healthy leaf!"); Voice(SoundManager.GardenMoment.EggLaid); });
                     if (egg != null) seq.Append(egg.DOScale(1f, 0.5f).SetEase(Ease.OutBack));
                     if (butterfly != null) seq.Append(butterfly.DOAnchorPos(butterflyHome + new Vector2(260f, 160f), 1.4f).SetEase(Ease.InSine));
                     seq.AppendCallback(() => Show(butterfly, false));
                     seq.Append(DayNightCycle(1.6f));
-                    seq.AppendCallback(() => { SetCaption("The egg hatches into a caterpillar!"); SeatCaterpillar(false); Show(caterpillar, true); if (caterpillar != null) caterpillar.localScale = Vector3.zero; });
+                    seq.AppendCallback(() => { SetCaption("The egg hatches into a caterpillar!"); Voice(SoundManager.GardenMoment.EggHatched); SeatCaterpillar(false); Show(caterpillar, true); if (caterpillar != null) caterpillar.localScale = Vector3.zero; });
                     if (egg != null) seq.Append(egg.DOScale(0f, 0.4f).SetEase(Ease.InBack));
                     if (caterpillar != null) seq.Join(caterpillar.DOScale(0.6f, 0.6f).SetEase(Ease.OutBack));
                     seq.AppendCallback(() => Show(egg, false));
@@ -436,6 +455,7 @@ namespace tmkoc.butterfly
                 case LifeStage.Caterpillar:
                     // the big caterpillar crawls off its leaf onto the branch and waits there; the chrysalis only forms once the branch is strong (Level 3)
                     SetCaption("The caterpillar crawls onto the branch...");
+                    Voice(SoundManager.GardenMoment.CaterpillarToBranch); // one line covers this caption and the next
                     if (caterpillar != null && caterpillarBranchSeat != null)
                     {
                         var seat = caterpillarBranchSeat;
@@ -452,6 +472,7 @@ namespace tmkoc.butterfly
 
                 case LifeStage.Chrysalis:
                     SetCaption("The caterpillar hangs beneath the strong branch...");
+                    Voice(SoundManager.GardenMoment.ChrysalisForms); // one line covers "...and forms a chrysalis!" too
                     if (caterpillar != null && chrysalis != null)
                     {
                         // turn upside down and hang from the branch where the chrysalis will form
@@ -464,20 +485,20 @@ namespace tmkoc.butterfly
                         seq.AppendInterval(0.5f);
                     }
                     // slow and readable: the chrysalis rests and grows over the days, wiggles, then the butterfly hatches
-                    seq.AppendCallback(() => SetCaption("Days pass as the chrysalis rests and grows..."));
+                    seq.AppendCallback(() => { SetCaption("Days pass as the chrysalis rests and grows..."); Voice(SoundManager.GardenMoment.ChrysalisRests); });
                     if (chrysalis != null)
                     {
                         seq.Append(DayNightCycle(2.4f));
                         seq.Join(chrysalis.DOScale(1.2f, 2.4f).SetEase(Ease.InOutSine));
                         seq.Append(DayNightCycle(2.4f));
                         seq.Join(chrysalis.DOScale(1.4f, 2.4f).SetEase(Ease.InOutSine));
-                        seq.AppendCallback(() => SetCaption("Something is moving inside!"));
+                        seq.AppendCallback(() => { SetCaption("Something is moving inside!"); Voice(SoundManager.GardenMoment.ChrysalisMoving); });
                         seq.Append(chrysalis.DOPunchRotation(new Vector3(0f, 0f, 10f), 1.2f, 6, 0.4f));
                         seq.Append(chrysalis.DOPunchRotation(new Vector3(0f, 0f, 14f), 1.2f, 8, 0.4f));
                         seq.AppendInterval(0.3f);
                     }
                     else seq.Append(DayNightCycle(3f));
-                    seq.AppendCallback(() => { SetCaption("A butterfly emerges from the chrysalis!"); Show(butterfly, true); if (butterfly != null && chrysalis != null) { butterfly.position = chrysalis.TransformPoint(chrysalis.rect.center); butterfly.localScale = Vector3.zero; } });
+                    seq.AppendCallback(() => { SetCaption("A butterfly emerges from the chrysalis!"); Voice(SoundManager.GardenMoment.ButterflyEmerges); Show(butterfly, true); if (butterfly != null && chrysalis != null) { butterfly.position = chrysalis.TransformPoint(chrysalis.rect.center); butterfly.localScale = Vector3.zero; } });
                     if (chrysalis != null) seq.Append(chrysalis.DOScale(0f, 1f).SetEase(Ease.InBack));
                     if (butterfly != null)
                     {
@@ -491,6 +512,7 @@ namespace tmkoc.butterfly
 
                 case LifeStage.Butterfly:
                     SetCaption("The butterfly drinks nectar and flies!");
+                    Voice(SoundManager.GardenMoment.ButterflyNectar);
                     foreach (var f in flowers) Show(f, true);
                     if (butterfly != null)
                     {
@@ -573,6 +595,8 @@ namespace tmkoc.butterfly
         }
 
         private static void Show(RectTransform r, bool on) { if (r != null) r.gameObject.SetActive(on); }
+
+        private static void Voice(SoundManager.GardenMoment moment) => GameManager.Instance?.SoundManager?.PlayGardenMoment(moment);
 
         private void OnDisable() { KillTweens(); zoomTween?.Kill(); }
     }

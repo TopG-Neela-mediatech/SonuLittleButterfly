@@ -788,6 +788,7 @@ MonoBehaviour:
   storyData: {fileID: 11400000, guid: d9fbbb7d4a0c9ba4b9299f7be28fbe28, type: 2}
   storyUI: {fileID: 7602986890361085613}
   storyAnimator: {fileID: 5160116889810398041}
+  minimumSlideDuration: 3
 --- !u!1 &7566536766432795278
 GameObject:
   m_ObjectHideFlags: 0

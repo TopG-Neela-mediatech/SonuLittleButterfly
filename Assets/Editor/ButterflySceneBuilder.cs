@@ -108,7 +108,8 @@ public static class ButterflySceneBuilder
         scaler.matchWidthOrHeight = 0.5f;
 
         // keep the back button, clear everything else under MainCanvas (re-runnable)
-        var backButton = mainCanvasGo.transform.Find("PlayschoolBackButton")?.gameObject
+        var backButton = mainCanvasGo.transform.Find("PlaySchoolBackButton")?.gameObject
+                         ?? mainCanvasGo.transform.Find("PlayschoolBackButton")?.gameObject
                          ?? mainCanvasGo.transform.Find("BGPanel/PlaySchoolBackButton")?.gameObject;
         var toDelete = new List<GameObject>();
         foreach (Transform c in mainCanvasGo.transform) if (c.gameObject != backButton && c.name != "BGPanel") toDelete.Add(c.gameObject);
@@ -125,7 +126,8 @@ public static class ButterflySceneBuilder
         Place(bgArtImg.rectTransform, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(1080, 1920)); bgArtImg.rectTransform.pivot = new Vector2(0.5f, 1f);
         var bgAligner = bgArtImg.gameObject.AddComponent<BackgroundAligner>(); // covers the screen and keeps the lawn line under the garden on every aspect
         if (backButton == null) { backButton = Img(bgPanel.rectTransform, "PlaySchoolBackButton", backBtn, Color.white).gameObject; backButton.AddComponent<Button>(); }
-        else backButton.transform.SetParent(bgPanel.transform, false);
+        // above the gameplay (the tree canopy reaches the top-left corner), not inside BGPanel
+        backButton.transform.SetParent(mc, false);
         backButton.name = "PlaySchoolBackButton";
         // same placement as BuildABot / TugOfWar: top-left, pivot (0,1), 50px inset, 125px
         var backImg = backButton.GetComponent<Image>(); if (backImg != null) { backImg.sprite = backBtn; backImg.color = Color.white; backImg.preserveAspect = true; }
@@ -146,18 +148,21 @@ public static class ButterflySceneBuilder
         SetField(bgAligner, "gardenView", gardenRt);
         gardenRt.anchorMin = new Vector2(0, 0.6f); gardenRt.anchorMax = Vector2.one; gardenRt.offsetMin = gardenRt.offsetMax = Vector2.zero;
         var garden = gardenRt.gameObject.AddComponent<GardenView>();
-        var tree = Prop(gardenRt, "TreeImage", treeArt, Vector2.zero, Vector2.zero, new Vector2(1024, 1380), Vector2.zero); // FullTree.png native size
+        // TreeImage: FullTree.png at native size, anchored + pivoted to the garden's bottom-left. Its scene layout is the zoomed-in
+        // view (trunk on the left edge, branch across the garden, canopy above - like the reference mock-up); GardenView slides and
+        // scales it from here to zoom out to the whole tree.
+        var tree = Prop(gardenRt, "TreeImage", treeArt, Vector2.zero, new Vector2(-279.4f, -516.2f), new Vector2(1024, 1380), Vector2.zero);
+        tree.localScale = new Vector3(0.958f, 0.958f, 1f);
 
-        // Branch_2 (1624x680 art) grows out of the knot on the right of the trunk (FullTree px ~385,748) into the empty space.
-        // Inside the holder everything keeps the old layout units (art px * 0.65); the holder itself is scaled 0.6 into tree px.
-        const float BranchScale = 0.65f, HolderScale = 0.6f;
+        // Branch_2 (1624x680 art) grows out of the trunk just under the canopy and reaches right across the garden
+        // (reference mock-up shared in chat - about 0.64 tree px per art px, holder top-left at tree px (255, 390 from top)).
+        // Inside the holder everything keeps the old layout units (art px * 0.65).
+        const float BranchScale = 0.65f, HolderScale = 0.985f;
         var branchHolder = Empty(tree, "BranchHolder");
         branchHolder.anchorMin = branchHolder.anchorMax = Vector2.zero; branchHolder.pivot = new Vector2(0, 1);
         branchHolder.sizeDelta = new Vector2(1624 * BranchScale, 680 * BranchScale);
         branchHolder.localScale = new Vector3(HolderScale, HolderScale, 1);
-        // branch base (art 30,615) on the knot: tree-local y is measured up from the bottom (1380 - 748)
-        var knot = new Vector2(385f, 1380f - 748f);
-        branchHolder.anchoredPosition = knot - new Vector2(30 * BranchScale, -615 * BranchScale) * HolderScale;
+        branchHolder.anchoredPosition = new Vector2(255f, 1380f - 390f); // tree-local y is measured up from the bottom
         var branch = Prop(branchHolder, "Branch", gardenBranchArt, new Vector2(0, 1), Vector2.zero, new Vector2(1624 * BranchScale, 680 * BranchScale), new Vector2(0, 1));
         var branchImg = branch.GetComponent<Image>();
         branchImg.type = Image.Type.Filled; branchImg.fillMethod = Image.FillMethod.Horizontal; branchImg.fillOrigin = (int)Image.OriginHorizontal.Left; branchImg.fillAmount = 1f;
@@ -196,12 +201,20 @@ public static class ButterflySceneBuilder
         // hangs under the branch at art (1000, 405); pivot at the top of the visible chrysalis (art y 46)
         var chry = Prop(branchHolder, "Chrysalis", chrysalisArt, new Vector2(0, 1), new Vector2(1000 * BranchScale, -405 * BranchScale), new Vector2(190, 190), new Vector2(0.5f, 1f - 46f / 1024f));
 
-        // Butterfly stage: two flowering bushes on the ground in front of the tree, growing with progress (pivot at the base)
+        // Nectar level: the tree is hidden; two big flowering bushes in a holder anchored + pivoted bottom-centre.
+        // The holder's scene scale is the zoomed-in view; GardenView scales it down to zoom out. Each bush also grows with progress.
+        var bushHolder = Empty(gardenRt, "BushHolder");
+        bushHolder.anchorMin = bushHolder.anchorMax = bushHolder.pivot = new Vector2(0.5f, 0); bushHolder.anchoredPosition = Vector2.zero; bushHolder.sizeDelta = new Vector2(1080, 600);
         var flowers = new RectTransform[2];
-        float[] flowerX = { 230, 850 };
-        for (int i = 0; i < flowers.Length; i++) flowers[i] = Prop(gardenRt, "Flower" + i, i % 2 == 0 ? bushesArt : bushes2Art, new Vector2(0, 0), new Vector2(flowerX[i], 0), new Vector2(420, 420), new Vector2(0.5f, 0.15f));
+        float[] flowerX = { -270, 270 };
+        for (int i = 0; i < flowers.Length; i++) flowers[i] = Prop(bushHolder, "Flower" + i, i % 2 == 0 ? bushesArt : bushes2Art, new Vector2(0.5f, 0), new Vector2(flowerX[i], 20), new Vector2(720, 720), new Vector2(0.5f, 0.2f));
+        // Sorting: the creatures draw in front of the game panel's text and board (own canvases, override sorting);
+        // the night tint, caption, flying items, FX, tutorial hand and final panel sit above them.
+        foreach (var creature in new[] { egg, cat, chry }) SortAbove(creature, SortCreatures);
         var bfly = Prop(gardenRt, "Butterfly", butterflyArt, new Vector2(0.5f, 0.5f), new Vector2(230, 80), new Vector2(200, 200), new Vector2(0.5f, 0.5f));
+        SortAbove(bfly, SortCreatures);
         var night = Img(gardenRt, "NightOverlay", null, new Color(0.1f, 0.12f, 0.3f, 0f)); night.raycastTarget = false;
+        SortAbove(night, SortNight);
         night.rectTransform.anchorMin = new Vector2(0, -2f); night.rectTransform.anchorMax = new Vector2(1, 1.5f); night.rectTransform.offsetMin = night.rectTransform.offsetMax = Vector2.zero; // garden is 40% of the screen: -1.5 reaches the bottom
         var deliveryTarget = Empty(gardenRt, "DeliveryTarget"); Place(deliveryTarget, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10, 10));
         var levelPill = Img(gardenRt, "LevelPill", null, Hex("#FFFDF1")); Pill(levelPill, 90); Place(levelPill.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -112), new Vector2(260, 90));
@@ -221,6 +234,7 @@ public static class ButterflySceneBuilder
         captionPill.rectTransform.anchorMin = new Vector2(0, 1); captionPill.rectTransform.anchorMax = new Vector2(1, 1); captionPill.rectTransform.offsetMin = new Vector2(200, -285); captionPill.rectTransform.offsetMax = new Vector2(-200, -195);
         var captionText = Text(captionPill.rectTransform, "Caption", "", 28, Hex("#648261"), TextAlignmentOptions.Center); Stretch(captionText.rectTransform, 45, 10);
         captionText.enableAutoSizing = true; captionText.fontSizeMin = 18; captionText.fontSizeMax = 28;
+        SortAbove(captionPill, SortCaption); // before deactivating: override sorting doesn't stick on an inactive canvas
         captionPill.gameObject.SetActive(false); // only shown while a stage transformation plays
         // restart: same 125px top-corner button as the back button (mirrored to the right), BuildABot/TugOfWar style
         var restartImg = Img(gardenRt, "RestartButton", restartBtn, Color.white); restartImg.preserveAspect = true;
@@ -228,7 +242,7 @@ public static class ButterflySceneBuilder
         restartImg.rectTransform.anchoredPosition = new Vector2(-50, -50); restartImg.rectTransform.sizeDelta = new Vector2(125, 125);
         var restartButton = restartImg.gameObject.AddComponent<Button>();
 
-        SetField(garden, "tree", tree);
+        SetField(garden, "tree", tree); SetField(garden, "bushHolder", bushHolder);
         SetField(garden, "branch", branch); SetField(garden, "egg", egg); SetField(garden, "caterpillar", cat);
         SetField(garden, "chrysalis", chry); SetField(garden, "butterfly", bfly); SetField(garden, "flowers", flowers);
         SetField(garden, "nightOverlay", night); SetField(garden, "deliveryTarget", deliveryTarget); SetField(garden, "caption", captionText);
@@ -262,7 +276,9 @@ public static class ButterflySceneBuilder
 
         var dragLayer = Empty(level1, "DragLayer"); Stretch(dragLayer);
         var flightLayer = Empty(level1, "FlightLayer"); Stretch(flightLayer);
+        SortAbove(flightLayer, SortFlight); // goal items fly over the garden creatures
         var hand = Img(level1, "TutorialHand", handSprite, Color.white); hand.preserveAspect = true; hand.raycastTarget = false;
+        SortAbove(hand, SortTop);
         Place(hand.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170, 170)); hand.rectTransform.pivot = new Vector2(0.42f, 0.9f); // fingertip on the target
         var handCg = hand.gameObject.AddComponent<CanvasGroup>(); handCg.blocksRaycasts = false;
         BuildFxLayer(level1);
@@ -279,6 +295,7 @@ public static class ButterflySceneBuilder
         var finalImg = Img(mc, "FinalCelebrationPanel", null, new Color(0.26f, 0.4f, 0.32f, 0.7f)); Stretch(finalImg.rectTransform);
         var finalCg = finalImg.gameObject.AddComponent<CanvasGroup>();
         var finalPanel = finalImg.gameObject.AddComponent<FinalCelebrationPanel>();
+        SortAbove(finalImg, SortTop, true); // above the creatures; still blocks taps on the board
         var modal = Img(finalImg.rectTransform, "Modal", null, Hex("#FFF9E8")); Round(modal, 60); modal.gameObject.AddComponent<FitInsideParent>(); /* shrinks on narrow screens (foldables) */ Place(modal.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920, 1000));
         var finalTitle = Text(modal.rectTransform, "Title", "Butterfly Garden Helper!", 52, Hex("#EA936D"), TextAlignmentOptions.Center); Place(finalTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -80), new Vector2(860, 80));
         var cycleRow = Empty(modal.rectTransform, "LifeCycle"); Place(cycleRow, new Vector2(0.5f, 1), new Vector2(0, -260), new Vector2(880, 220));
@@ -335,6 +352,9 @@ public static class ButterflySceneBuilder
         var smT = scriptsRoot.transform.Find("SoundManager"); var smGo = smT != null ? smT.gameObject : new GameObject("SoundManager");
         smGo.transform.SetParent(scriptsRoot.transform, false);
         var sm = GetOrAdd<SoundManager>(smGo);
+        // voice keys come from the code defaults (they mirror AudioXL/Sonu's Little Butterfly - Audio Script.xlsx)
+        typeof(SoundManager).GetField("audioMapper", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(sm, new ButterflyAudioMapper());
+        EditorUtility.SetDirty(sm);
         var bgm = GetOrAdd<AudioSource>(Child(smGo.transform, "BGMSource").gameObject); bgm.loop = true; bgm.playOnAwake = false;
         var sfx = GetOrAdd<AudioSource>(Child(smGo.transform, "SFXSource").gameObject); sfx.playOnAwake = false;
         SetField(sm, "bgmSource", bgm); SetField(sm, "sfxSource", sfx);
@@ -347,8 +367,8 @@ public static class ButterflySceneBuilder
         SetField(lm, "playSchoolBackButton", backButton.GetComponent<Button>()); SetField(lm, "database", db); SetField(lm, "levelController", levelController);
         SetField(lm, "storyController", storyController); SetField(lm, "introStory", AssetDatabase.LoadAssetAtPath<StoryData>(StoryFolder + "/Story_Intro.asset")); SetField(lm, "finalPanel", finalPanel);
 
-        // sibling order: BGPanel, LevelMain, FinalCelebrationPanel, WinLose
-        bgPanel.transform.SetSiblingIndex(0); levelMain.SetSiblingIndex(1); finalImg.transform.SetSiblingIndex(2); winLose.transform.SetSiblingIndex(3);
+        // sibling order: BGPanel, LevelMain, PlaySchoolBackButton (over the garden), FinalCelebrationPanel, WinLose
+        bgPanel.transform.SetSiblingIndex(0); levelMain.SetSiblingIndex(1); backButton.transform.SetSiblingIndex(2); finalImg.transform.SetSiblingIndex(3); winLose.transform.SetSiblingIndex(4);
         hand.transform.SetAsLastSibling();
         hand.gameObject.SetActive(false);
 
@@ -410,11 +430,11 @@ public static class ButterflySceneBuilder
     static void BuildStories(LevelDatabase db)
     {
         if (!AssetDatabase.IsValidFolder(StoryFolder)) AssetDatabase.CreateFolder(SoFolder, "Stories");
+        // First-time intro: 3 slides = 3 voice lines (story1-story3 in AudioXL). Sprites are placeholders from the game art for now.
         Story("Story_Intro",
             S("One morning, Sonu spots a beautiful butterfly in Gokuldham garden, looking for a safe leaf to lay her egg.", butterflyArt),
-            S("Sonu: \"Mummy, look! I want to make a safe home for its egg and watch how it grows!\"", sonu),
-            S("Madhavi: \"Wonderful idea, Sonu! The egg needs a healthy leaf, the caterpillar needs food, and the butterfly needs nectar.\"", sonuSmall),
-            S("Help Sonu care for the garden and watch the butterfly grow, from a tiny egg to a beautiful butterfly!", sonu));
+            S("Sonu: \"Mummy, can we help?\" Madhavi: \"Yes! The egg needs a healthy leaf, the caterpillar needs food, and the butterfly needs nectar.\"", sonu),
+            S("Help Sonu care for the tree and watch the butterfly grow, from a tiny egg to a beautiful butterfly!", treeArt));
         db.GetTheme(MergeTheme.Water).stageEndStory = Story("Story_Stage1_End",
             S("The mother butterfly lands on the healthy leaf and lays an egg. After a few days, a tiny caterpillar hatches!", eggOnLeafArt),
             S("Sonu: \"Yay! The butterfly found a home for her egg!\" Now the hungry caterpillar needs lots of leaves to eat.", caterpillarArt));
@@ -550,6 +570,7 @@ public static class ButterflySceneBuilder
     static void BuildFxLayer(Transform parent)
     {
         var layer = Empty(parent, "FxLayer"); Stretch(layer);
+        SortAbove(layer, SortFx);
         var fx = layer.gameObject.AddComponent<UiFx>();
         var star = LoadSprite(FxSprites + "4Star.png");
         var puff = LoadSprite(FxSprites + "PuffCloud.png");
@@ -703,6 +724,15 @@ public static class ButterflySceneBuilder
         so.FindProperty("mode").enumValueIndex = (int)mode;
         so.FindProperty("basePosition").vector2Value = ((RectTransform)go.transform).anchoredPosition;
         so.ApplyModifiedPropertiesWithoutUndo();
+    }
+    // Override-sorting orders inside MainCanvas (everything else is order 0, in hierarchy order)
+    const int SortCreatures = 5, SortNight = 6, SortFlight = 8, SortCaption = 10, SortFx = 15, SortTop = 20;
+    /// <summary>Gives the object its own nested canvas drawn at this order (WinLose and the story are overlay canvases, always on top).</summary>
+    static void SortAbove(Component c, int order, bool raycasts = false)
+    {
+        var cv = GetOrAdd<Canvas>(c.gameObject);
+        cv.overrideSorting = true; cv.sortingOrder = order;
+        if (raycasts) GetOrAdd<GraphicRaycaster>(c.gameObject);
     }
     static T GetOrAdd<T>(GameObject go) where T : Component { var c = go.GetComponent<T>(); return c != null ? c : go.AddComponent<T>(); }
     static Color Hex(string hex) { ColorUtility.TryParseHtmlString(hex, out var c); return c; }

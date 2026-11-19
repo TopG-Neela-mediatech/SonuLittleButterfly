@@ -106,12 +106,13 @@ namespace tmkoc.butterfly
 
         private void OnLevelWin()
         {
-            GameManager.Instance.SoundManager?.PlayLevelOutro();
             bool last = currentLevelIndex >= TotalLevels - 1;
             var theme = CurrentTheme;
             GameManager.Instance.SoundManager?.PlaySFX(SoundManager.SfxType.StageComplete);
             levelController.PlayStageTransform(() =>
             {
+                // after the narrated garden animation, so the two voice lines don't cut each other off
+                GameManager.Instance.SoundManager?.PlayLevelOutro();
                 GameManager.Instance.InvokeStageComplete(theme.stage);
                 if (!last) { StartCoroutine(LoadWinPanelWithDelay(winPanelDelay)); return; }
                 // the very end: closing story, then the badge and stars, then the win panel
