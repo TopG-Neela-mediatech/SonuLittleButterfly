@@ -29,6 +29,7 @@ namespace tmkoc.butterfly
             {
                 Destroy(gameObject);
             }
+            Screen.orientation = ScreenOrientation.Portrait;
         }
 
 
