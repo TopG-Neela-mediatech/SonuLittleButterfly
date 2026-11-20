@@ -25,10 +25,6 @@ namespace tmkoc.butterfly
         [SerializeField] private StoryData introStory;
         [SerializeField] private FinalCelebrationPanel finalPanel;
 
-        [Header("Rewards")]
-        [SerializeField] private int completionStars = 10;
-        [SerializeField] private string completionTransactionId = "SonuLittleButterfly_GameComplete";
-
         [Header("Timing")]
         [SerializeField] private float winPanelDelay = 1f;
 
@@ -126,8 +122,8 @@ namespace tmkoc.butterfly
             GameManager.Instance.SoundManager?.PlaySFX(SoundManager.SfxType.Celebrate);
             GameManager.Instance.SoundManager?.PlayFinalOutro();
             GameManager.Instance.InvokeGameComplete();
-            int awarded = AwardCompletionStars();
-            if (finalPanel != null) finalPanel.Show(awarded, FinishGame);
+            // stars come from the shared save (HelperGameCategoryDataSaver.LevelCompleted), not a game-side wallet credit
+            if (finalPanel != null) finalPanel.Show(0, FinishGame);
             else FinishGame();
         }
 
@@ -143,17 +139,6 @@ namespace tmkoc.butterfly
 #else
             ShowWinPanel();
 #endif
-        }
-
-        private int AwardCompletionStars()
-        {
-            try
-            {
-                if (completionStars > 0 && StarWallet.Credit(completionStars, completionTransactionId, StarChangeReason.GameCompleted))
-                    return completionStars;
-            }
-            catch (Exception e) { Debug.LogWarning("Star award skipped: " + e.Message); }
-            return 0;
         }
 
         private IEnumerator LoadWinPanelWithDelay(float delay)

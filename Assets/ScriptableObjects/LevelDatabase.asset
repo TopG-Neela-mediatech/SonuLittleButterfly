@@ -186,14 +186,6 @@ MonoBehaviour:
       - tier: 3
         count: 1
       isTutorial: 0
-    - objective: Water the flowers again.
-      theme: 3
-      columns: 4
-      rows: 4
-      goals:
-      - tier: 3
-        count: 2
-      isTutorial: 0
     - objective: Make the flowers nectar-rich.
       theme: 3
       columns: 4

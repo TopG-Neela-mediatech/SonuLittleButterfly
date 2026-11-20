@@ -440,7 +440,6 @@ public static class ButterflySceneBuilder
             M("Grow nectar-rich flowers!", MergeTheme.Flower,
                 L("Water the flower buds.", MergeTheme.Flower, 3, 4, G(2, 2)),
                 L("Help the flowers bloom.", MergeTheme.Flower, 4, 4, G(3, 1)),
-                L("Water the flowers again.", MergeTheme.Flower, 4, 4, G(3, 2)),
                 L("Make the flowers nectar-rich.", MergeTheme.Flower, 4, 4, G(4, 1))),
         };
         db.mainLevels[0].subLevels[0].isTutorial = true;

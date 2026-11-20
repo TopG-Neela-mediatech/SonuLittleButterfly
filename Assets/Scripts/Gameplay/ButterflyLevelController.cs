@@ -108,6 +108,7 @@ namespace tmkoc.butterfly
             }
 
             SetTextBarVisible(true, false);
+            SetGardenHudVisible(true);
             if (levelLabel != null) levelLabel.text = $"LEVEL {index + 1}";
             if (objectiveText != null) objectiveText.text = def.objective;
             if (instructionText != null) instructionText.gameObject.SetActive(false);
@@ -315,8 +316,24 @@ namespace tmkoc.butterfly
             busy = true;
             board.Locked = true;
             RefreshDots(true); // last round's dot fills
-            SetTextBarVisible(false, true); // the garden animation plays without the objective / goal bar under it
+            SetTextBarVisible(false, true); // the garden animation plays without the objective / goal bar under it (the caption takes that strip)
+            SetGardenHudVisible(false, 0.6f); // level pill + dots fade after the last dot fills, so nothing covers the butterfly / egg / caterpillar
             garden.PlayStageTransform(() => { busy = false; done?.Invoke(); });
+        }
+
+        /// <summary>Level pill and round dots at the top of the garden. Faded out while a level-end animation plays, back in InitializeLevel.</summary>
+        private void SetGardenHudVisible(bool visible, float delay = 0f)
+        {
+            var dotsRoot = subDots != null && subDots.Length > 0 && subDots[0] != null ? subDots[0].transform.parent as RectTransform : null;
+            foreach (var rt in new[] { levelPill, dotsRoot })
+            {
+                if (rt == null || rt == transform) continue;
+                var cg = rt.GetComponent<CanvasGroup>();
+                if (cg == null) cg = rt.gameObject.AddComponent<CanvasGroup>();
+                cg.DOKill();
+                if (visible) cg.alpha = 1f;
+                else cg.DOFade(0f, 0.35f).SetDelay(delay);
+            }
         }
 
         /// <summary>Objective line + goal chips. Hidden while a level-end animation plays, shown again by InitializeLevel.</summary>

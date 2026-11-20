@@ -67,6 +67,10 @@ namespace tmkoc.butterfly
         [Tooltip("Level 4: parent of the two bushes, anchored bottom-centre; its scene scale is the zoomed-in view.")]
         [SerializeField] private RectTransform bushHolder;
         [SerializeField, Range(0.1f, 1f)] private float bushZoomOutScale = 0.55f;
+        [Tooltip("Level 4: space kept free at the top of the garden (level pill + round dots) when fitting the grown bushes.")]
+        [SerializeField] private float bushTopMargin = 210f;
+        [Tooltip("Level 4: headroom for the OutBack pop when a bush grows, so the overshoot doesn't leave the screen either.")]
+        [SerializeField, Range(1f, 1.3f)] private float bushPopOvershoot = 1.1f;
         [Tooltip("Extra tree-local margin around the branch and its leaves when fitting the zoom-in.")]
         [SerializeField] private float branchFocusMargin = 20f;
         [SerializeField] private float zoomInDuration = 2.4f;
@@ -375,8 +379,10 @@ namespace tmkoc.butterfly
             if (stage == LifeStage.Butterfly)
             {
                 if (bushHolder == null) return;
-                // scale about the bottom-centre anchor: the bushes stay on the ground and grow toward the viewer
-                bushHolder.localScale = Vector3.Lerp(bushInScale * bushZoomOutScale, bushInScale, t);
+                // scale about the bottom-centre anchor: the bushes stay on the ground and grow toward the viewer,
+                // never bigger than what fits the garden (fully grown bushes + pop overshoot stay on screen)
+                var full = bushInScale * BushFit();
+                bushHolder.localScale = Vector3.Lerp(full * bushZoomOutScale, full, t);
                 bushHolder.anchoredPosition = bushInPos;
                 return;
             }
@@ -388,6 +394,35 @@ namespace tmkoc.butterfly
             float f = Mathf.Abs(inScale - startScale) > 1e-4f ? (k - startScale) / (inScale - startScale) : t;
             tree.localScale = new Vector3(k, k, 1f);
             tree.anchoredPosition = Vector2.Lerp(startPos, inPos, f);
+        }
+
+        /// <summary>
+        /// Level 4: extra factor (≤1) on the bush holder's scene scale so the fully grown bushes fit the garden:
+        /// within the side padding, and below the level pill / round dots at the top.
+        /// </summary>
+        private float BushFit()
+        {
+            if (bushHolder == null || flowers == null) return 1f;
+            var holder = bushHolder.rect;
+            float xMin = float.MaxValue, xMax = float.MinValue, yMax = float.MinValue;
+            foreach (var f in flowers)
+            {
+                if (f == null) continue;
+                // flower rect at full growth (scale 1), in the holder's local space
+                var anchorRef = holder.min + Vector2.Scale(f.anchorMin, holder.size);
+                var min = anchorRef + f.anchoredPosition - Vector2.Scale(f.pivot, f.rect.size);
+                xMin = Mathf.Min(xMin, min.x); xMax = Mathf.Max(xMax, min.x + f.rect.width);
+                yMax = Mathf.Max(yMax, min.y + f.rect.height);
+            }
+            if (xMin > xMax) return 1f;
+            var g = ((RectTransform)transform).rect;
+            float sx = Mathf.Abs(bushInScale.x) * bushPopOvershoot;
+            float sy = Mathf.Abs(bushInScale.y) * bushPopOvershoot;
+            // the holder pivots on the garden's bottom-centre: each side must fit half the width
+            float halfW = Mathf.Max(Mathf.Abs(xMin), Mathf.Abs(xMax));
+            float fitW = (g.width * 0.5f - sidePadding) / Mathf.Max(1f, halfW * sx);
+            float fitH = (g.height - bushTopMargin - bushHolder.anchoredPosition.y) / Mathf.Max(1f, yMax * sy);
+            return Mathf.Clamp(Mathf.Min(fitW, fitH), 0.1f, 1f);
         }
 
         /// <summary>Level-start framing: the scene layout, shrunk about the top-left anchor when the garden is narrower than it was made for.</summary>
