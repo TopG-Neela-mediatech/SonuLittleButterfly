@@ -514,8 +514,8 @@ namespace tmkoc.butterfly
 
                 case LifeStage.Caterpillar:
                     // the big caterpillar crawls off its leaf onto the branch and waits there; the chrysalis only forms once the branch is strong (Level 3)
-                    SetCaption("The caterpillar crawls onto the branch...");
-                    Voice(SoundManager.GardenMoment.CaterpillarToBranch); // one line covers this caption and the next
+                    SetCaption("The caterpillar crawls onto the branch. Let's make the branch strong!");
+                    Voice(SoundManager.GardenMoment.CaterpillarToBranch);
                     if (caterpillar != null && caterpillarBranchSeat != null)
                     {
                         var seat = caterpillarBranchSeat;
@@ -524,28 +524,28 @@ namespace tmkoc.butterfly
                         seq.Append(caterpillar.DOMove(seat.position, 1.6f).SetEase(Ease.InOutSine));
                         seq.Join(caterpillar.DORotateQuaternion(seat.rotation, 0.9f));
                         seq.Join(caterpillar.DOScale(caterpillarFullScale * k, 1.6f));
-                        seq.AppendCallback(() => { SeatCaterpillar(true); caterpillar.localScale = Vector3.one * caterpillarFullScale; SetCaption("It waits on the branch. Let's make it strong!"); });
+                        seq.AppendCallback(() => { SeatCaterpillar(true); caterpillar.localScale = Vector3.one * caterpillarFullScale; });
                         seq.Append(caterpillar.DOPunchScale(Vector3.one * 0.1f, 0.4f, 5, 0.5f));
                     }
                     seq.AppendInterval(1f);
                     break;
 
                 case LifeStage.Chrysalis:
-                    SetCaption("The caterpillar hangs beneath the strong branch...");
-                    Voice(SoundManager.GardenMoment.ChrysalisForms); // one line covers "...and forms a chrysalis!" too
+                    SetCaption("The caterpillar hangs beneath the strong branch and forms a chrysalis!");
+                    Voice(SoundManager.GardenMoment.ChrysalisForms);
                     if (caterpillar != null && chrysalis != null)
                     {
                         // turn upside down and hang from the branch where the chrysalis will form
                         seq.Append(caterpillar.DOMove(chrysalis.position, 1.1f).SetEase(Ease.InOutSine));
                         seq.Join(caterpillar.DOLocalRotate(new Vector3(0f, 0f, 180f), 1.1f));
-                        seq.AppendCallback(() => { SetCaption("...and forms a chrysalis!"); Show(chrysalis, true); chrysalis.localScale = Vector3.zero; });
+                        seq.AppendCallback(() => { Show(chrysalis, true); chrysalis.localScale = Vector3.zero; });
                         seq.Append(caterpillar.DOScale(0f, 0.5f).SetEase(Ease.InBack));
                         seq.Join(chrysalis.DOScale(1f, 0.7f).SetEase(Ease.OutBack));
                         seq.AppendCallback(() => Show(caterpillar, false));
                         seq.AppendInterval(0.5f);
                     }
                     // slow and readable: the chrysalis rests and grows over the days, wiggles, then the butterfly hatches
-                    seq.AppendCallback(() => { SetCaption("Days pass as the chrysalis rests and grows..."); Voice(SoundManager.GardenMoment.ChrysalisRests); });
+                    seq.AppendCallback(() => { SetCaption("Days pass as the chrysalis rests and grows."); Voice(SoundManager.GardenMoment.ChrysalisRests); });
                     if (chrysalis != null)
                     {
                         seq.Append(DayNightCycle(2.4f));
@@ -558,7 +558,7 @@ namespace tmkoc.butterfly
                         seq.AppendInterval(0.3f);
                     }
                     else seq.Append(DayNightCycle(3f));
-                    seq.AppendCallback(() => { SetCaption("A butterfly emerges from the chrysalis!"); Voice(SoundManager.GardenMoment.ButterflyEmerges); Show(butterfly, true); if (butterfly != null && chrysalis != null) { butterfly.position = chrysalis.TransformPoint(chrysalis.rect.center); butterfly.localScale = Vector3.zero; } });
+                    seq.AppendCallback(() => { SetCaption("A beautiful butterfly emerges from the chrysalis!"); Voice(SoundManager.GardenMoment.ButterflyEmerges); Show(butterfly, true); if (butterfly != null && chrysalis != null) { butterfly.position = chrysalis.TransformPoint(chrysalis.rect.center); butterfly.localScale = Vector3.zero; } });
                     if (chrysalis != null) seq.Append(chrysalis.DOScale(0f, 1f).SetEase(Ease.InBack));
                     if (butterfly != null)
                     {

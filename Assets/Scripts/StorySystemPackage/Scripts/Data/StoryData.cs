@@ -12,6 +12,14 @@ namespace tmkoc.butterfly
         public Sprite  foregroundSprite;
         [TextArea(2, 4)]
         public string  captionText;
+        [Tooltip("Foreground fills the whole area above the caption (full storyboard scenes) instead of the default square.")]
+        public bool    fillSlideArea;
+
+        [Header("Midway swap (optional)")]
+        [Tooltip("Foreground swaps to this part-way through the slide; the caption and voice line carry on.")]
+        public Sprite  midwayForegroundSprite;
+        [Tooltip("When the swap happens, as a fraction of the slide's voice length (or of Display Duration while there is no audio).")]
+        [Range(0.1f, 0.9f)] public float midwaySwapAt = 0.5f;
 
         [Header("Timing")]
         public float   displayDuration = 3f;

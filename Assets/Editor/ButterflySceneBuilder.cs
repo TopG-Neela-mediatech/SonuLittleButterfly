@@ -27,8 +27,8 @@ public static class ButterflySceneBuilder
     const string ResetPath = "Assets/ImportedAssets/NewUI/resetreplay.png";
     const string StarPath = "Assets/ImportedAssets/EndPanelAsstes/Star 1.png";
     const string StoryBgPath = "Assets/ImportedAssets/StoryMode/UI_BGs_0005.png";
-    const string SonuPath = "Assets/ImportedAssets/0GameAssets/EndPanelAssets/Sonu Happy.png";
-    const string SonuSmallPath = "Assets/ImportedAssets/NewUI/sonu.png";
+    // Story board art (intro scene cards + Sonu poses for the stage-end stories)
+    const string StoryBoardRoot = "Assets/ImportedAssets/SonuButterflyAsset/Story board/";
     const string WinLosePrefabPath = "Assets/Prefabs/WinLose.prefab";
     const string WinLoseCanvasPrefabPath = "Assets/Prefabs/WinLosePanelCanvas.prefab";
     const string StoryPrefabPath = "Assets/Scripts/StorySystemPackage/Prefabs/StoryCanvas_Root.prefab";
@@ -76,7 +76,7 @@ public static class ButterflySceneBuilder
     static readonly Color Orange = Hex("#F5A36E");
 
     static TMP_FontAsset font;
-    static Sprite circle, rounded, cloud, resetIcon, star, storyBg, sonu, sonuSmall;
+    static Sprite circle, rounded, cloud, resetIcon, star, storyBg, scene1, scene2, scene3, sonuPointing, sonuPresenting, sonuExcited;
     static Sprite backBtn, restartBtn, handSprite, frameRound, framePill;
     static Sprite treeArt, treeShadowArt, bgArt, butterflyArt, caterpillarArt, chrysalisArt, eggOnLeafArt, eggArt, waterDropArt, bushesArt, bushes2Art;
     static Sprite branchArt, gardenBranchArt, branchLeafArt, branchDryLeafArt, plantArt, halfPlantArt, freshLeafArt, freshHalfLeafArt, dryLeafArt, dryHalfLeafArt;
@@ -450,23 +450,26 @@ public static class ButterflySceneBuilder
     static void BuildStories(LevelDatabase db)
     {
         if (!AssetDatabase.IsValidFolder(StoryFolder)) AssetDatabase.CreateFolder(SoFolder, "Stories");
-        // First-time intro: 3 slides = 3 voice lines (story1-story3 in AudioXL). Sprites are placeholders from the game art for now.
+        // Captions = voiceover_text in AudioXL (one slide per key). First-time intro: 2 slides = story1, story2 with the full story board scenes;
+        // slide 2 shows Scene 2 and swaps to Scene 3 halfway through story2 (3 s fallback while there is no audio -> swap at 1.5 s).
+        var intro2 = Full(S("Let's help Sonu find a healthy leaf for the egg to hatch into a caterpillar which turns into a chrysalis which transforms into a beautiful butterfly!", scene2));
+        intro2.midwayForegroundSprite = scene3; intro2.midwaySwapAt = 0.5f; intro2.displayDuration = 3f;
         Story("Story_Intro",
-            S("One morning, Sonu spots a beautiful butterfly in Gokuldham garden, looking for a safe leaf to lay her egg.", butterflyArt),
-            S("Sonu: \"Mummy, can we help?\" Madhavi: \"Yes! The egg needs a healthy leaf, the caterpillar needs food, and the butterfly needs nectar.\"", sonu),
-            S("Help Sonu care for the tree and watch the butterfly grow, from a tiny egg to a beautiful butterfly!", treeArt));
+            Full(S("One morning, Sonu spots a beautiful butterfly in Gokuldham garden, looking for a safe leaf to lay her egg.", scene1)),
+            intro2);
+        // Stage-end stories: slide 1 = the creature, slide 2 = Sonu's reaction (story board poses)
         db.GetTheme(MergeTheme.Water).stageEndStory = Story("Story_Stage1_End",
             S("The mother butterfly lands on the healthy leaf and lays an egg. After a few days, a tiny caterpillar hatches!", eggOnLeafArt),
-            S("Sonu: \"Yay! The butterfly found a home for her egg!\" Now the hungry caterpillar needs lots of leaves to eat.", caterpillarArt));
+            S("Yay! The butterfly found a home for her egg! Now the hungry caterpillar needs lots of leaves to eat.", sonuPointing));
         db.GetTheme(MergeTheme.Leaf).stageEndStory = Story("Story_Stage2_End",
             S("The caterpillar ate well and grew big. Now it is ready to transform, but it needs a safe place to hang.", caterpillarArt),
             S("Let us prepare strong twigs and branches so the caterpillar can form its chrysalis.", branchArt));
         db.GetTheme(MergeTheme.Twig).stageEndStory = Story("Story_Stage3_End",
             S("The caterpillar hangs beneath the strong branch and forms a chrysalis. Days pass as it changes inside.", chrysalisArt),
-            S("Madhavi: \"Amazing, Sonu! The caterpillar has transformed into a butterfly!\" Now it needs nectar-rich flowers.", butterflyArt));
+            S("Amazing! The chrysalis has transformed into a butterfly! Now it needs nectar-rich flowers.", sonuPresenting));
         db.GetTheme(MergeTheme.Flower).stageEndStory = Story("Story_Stage4_End",
-            S("The butterfly drinks nectar from the flowers you grew and flies happily around Gokuldham garden.", butterflyArt),
-            S("Sonu: \"We did it! Our tiny egg has become a beautiful butterfly!\" Madhavi: \"Now you know how a butterfly grows!\"", sonuSmall));
+            S("The butterfly drinks nectar from the flowers you grew and flies happily around.", butterflyArt),
+            S("We did it! Our tiny egg has become a beautiful butterfly! Now you know how a butterfly grows!", sonuExcited));
         EditorUtility.SetDirty(db);
     }
 
@@ -480,6 +483,7 @@ public static class ButterflySceneBuilder
         return so;
     }
     static StorySlide S(string caption, Sprite fg) => new StorySlide { backgroundSprite = storyBg, foregroundSprite = fg, captionText = caption, displayDuration = 4f, transitionIn = SlideTransitionType.FadeIn, transitionOut = SlideTransitionType.FadeOut };
+    static StorySlide Full(StorySlide s) { s.fillSlideArea = true; return s; }
     static ThemeData Theme(MergeTheme t, LifeStage s, string title, string caption, Color tint, Sprite[] sprites, params string[] names) => new ThemeData { theme = t, stage = s, stageTitle = title, gardenCaption = caption, tint = tint, tierNames = names, tierSprites = sprites };
     static MainLevel M(string title, MergeTheme t, params LevelDefinition[] subs) => new MainLevel { title = title, theme = t, subLevels = subs };
     static LevelDefinition L(string obj, MergeTheme t, int cols, int rows, params GoalRequirement[] goals) => new LevelDefinition { objective = obj, theme = t, columns = cols, rows = rows, goals = goals };
@@ -490,10 +494,12 @@ public static class ButterflySceneBuilder
     {
         font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontPath);
         EnsureSprite(CirclePath, Vector4.zero); EnsureSprite(RoundedPath, new Vector4(100, 120, 100, 100)); EnsureSprite(CloudPath, Vector4.zero); EnsureSprite(ResetPath, Vector4.zero);
-        EnsureSprite(StarPath, Vector4.zero); EnsureSprite(StoryBgPath, Vector4.zero); EnsureSprite(SonuPath, Vector4.zero); EnsureSprite(SonuSmallPath, Vector4.zero);
+        EnsureSprite(StarPath, Vector4.zero); EnsureSprite(StoryBgPath, Vector4.zero);
         circle = AssetDatabase.LoadAssetAtPath<Sprite>(CirclePath); rounded = AssetDatabase.LoadAssetAtPath<Sprite>(RoundedPath); cloud = AssetDatabase.LoadAssetAtPath<Sprite>(CloudPath);
         resetIcon = AssetDatabase.LoadAssetAtPath<Sprite>(ResetPath); star = AssetDatabase.LoadAssetAtPath<Sprite>(StarPath); storyBg = AssetDatabase.LoadAssetAtPath<Sprite>(StoryBgPath);
-        sonu = AssetDatabase.LoadAssetAtPath<Sprite>(SonuPath); sonuSmall = AssetDatabase.LoadAssetAtPath<Sprite>(SonuSmallPath) ?? sonu;
+        scene1 = LoadSprite(StoryBoardRoot + "Scene 1.png"); scene2 = LoadSprite(StoryBoardRoot + "Scene 2.png"); scene3 = LoadSprite(StoryBoardRoot + "scene 3.png");
+        sonuPointing = LoadSprite(StoryBoardRoot + "Cheerful Girl Pointing Right.png"); sonuPresenting = LoadSprite(StoryBoardRoot + "Excited Girl Presenting in Overalls.png");
+        sonuExcited = LoadSprite(StoryBoardRoot + "Excited Girl with Exclamation Marks.png");
 
         EnsureSprite(FrameRoundPath, FrameRoundBorder); EnsureSprite(FramePillPath, FramePillBorder);
         frameRound = AssetDatabase.LoadAssetAtPath<Sprite>(FrameRoundPath); framePill = AssetDatabase.LoadAssetAtPath<Sprite>(FramePillPath);

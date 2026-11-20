@@ -17,15 +17,21 @@ MonoBehaviour:
     foregroundSprite: {fileID: 21300000, guid: 3bfdffc8d543b5948bb3d6dd4fa95f9c, type: 3}
     captionText: The caterpillar hangs beneath the strong branch and forms a chrysalis.
       Days pass as it changes inside.
+    fillSlideArea: 0
+    midwayForegroundSprite: {fileID: 0}
+    midwaySwapAt: 0.5
     displayDuration: 4
     transitionIn: 0
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
   - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 3e1fb1fb058b03140bf792639bff8eec, type: 3}
-    captionText: 'Madhavi: "Amazing, Sonu! The caterpillar has transformed into a
-      butterfly!" Now it needs nectar-rich flowers.'
+    foregroundSprite: {fileID: 21300000, guid: a75329d151aef6e4dbc8282c7fe9a56f, type: 3}
+    captionText: Amazing! The chrysalis has transformed into a butterfly! Now it
+      needs nectar-rich flowers.
+    fillSlideArea: 0
+    midwayForegroundSprite: {fileID: 0}
+    midwaySwapAt: 0.5
     displayDuration: 4
     transitionIn: 0
     transitionOut: 1

@@ -16,16 +16,22 @@ MonoBehaviour:
   - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
     foregroundSprite: {fileID: 21300000, guid: 3e1fb1fb058b03140bf792639bff8eec, type: 3}
     captionText: The butterfly drinks nectar from the flowers you grew and flies
-      happily around Gokuldham garden.
+      happily around.
+    fillSlideArea: 0
+    midwayForegroundSprite: {fileID: 0}
+    midwaySwapAt: 0.5
     displayDuration: 4
     transitionIn: 0
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
   - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 2ca137971aed1824080f065a7d88f67f, type: 3}
-    captionText: 'Sonu: "We did it! Our tiny egg has become a beautiful butterfly!"
-      Madhavi: "Now you know how a butterfly grows!"'
+    foregroundSprite: {fileID: 21300000, guid: a6094a60926312343af0682757a2b81d, type: 3}
+    captionText: We did it! Our tiny egg has become a beautiful butterfly! Now you
+      know how a butterfly grows!
+    fillSlideArea: 0
+    midwayForegroundSprite: {fileID: 0}
+    midwaySwapAt: 0.5
     displayDuration: 4
     transitionIn: 0
     transitionOut: 1

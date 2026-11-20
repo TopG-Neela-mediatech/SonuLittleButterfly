@@ -17,15 +17,21 @@ MonoBehaviour:
     foregroundSprite: {fileID: 21300000, guid: 2b019bf8b64a27046811c9e8d099e550, type: 3}
     captionText: The mother butterfly lands on the healthy leaf and lays an egg.
       After a few days, a tiny caterpillar hatches!
+    fillSlideArea: 0
+    midwayForegroundSprite: {fileID: 0}
+    midwaySwapAt: 0.5
     displayDuration: 4
     transitionIn: 0
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
   - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 48a0e748fe6d70f41b1f53239757aa52, type: 3}
-    captionText: 'Sonu: "Yay! The butterfly found a home for her egg!" Now the hungry
-      caterpillar needs lots of leaves to eat.'
+    foregroundSprite: {fileID: 21300000, guid: 7592d2ed2a68a924bab065213e18de03, type: 3}
+    captionText: Yay! The butterfly found a home for her egg! Now the hungry caterpillar
+      needs lots of leaves to eat.
+    fillSlideArea: 0
+    midwayForegroundSprite: {fileID: 0}
+    midwaySwapAt: 0.5
     displayDuration: 4
     transitionIn: 0
     transitionOut: 1

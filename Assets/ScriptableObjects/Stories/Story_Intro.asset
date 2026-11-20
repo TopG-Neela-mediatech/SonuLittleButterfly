@@ -14,28 +14,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   slides:
   - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 3e1fb1fb058b03140bf792639bff8eec, type: 3}
+    foregroundSprite: {fileID: 21300000, guid: 9fcae5a98dbd44746ae8d02f104d1e8f, type: 3}
     captionText: One morning, Sonu spots a beautiful butterfly in Gokuldham garden,
       looking for a safe leaf to lay her egg.
+    fillSlideArea: 1
+    midwayForegroundSprite: {fileID: 0}
+    midwaySwapAt: 0.5
     displayDuration: 4
     transitionIn: 0
     transitionOut: 1
     narrationClip: {fileID: 0}
     slideEnterSFX: {fileID: 0}
   - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: 0bfdfae5cd1f05f4183080a201dbd672, type: 3}
-    captionText: 'Sonu: "Mummy, can we help?" Madhavi: "Yes! The egg needs a healthy
-      leaf, the caterpillar needs food, and the butterfly needs nectar."'
-    displayDuration: 4
-    transitionIn: 0
-    transitionOut: 1
-    narrationClip: {fileID: 0}
-    slideEnterSFX: {fileID: 0}
-  - backgroundSprite: {fileID: 21300000, guid: b4d76caa7329e984e89d1d44d2ff1eb9, type: 3}
-    foregroundSprite: {fileID: 21300000, guid: e2074da34ad89fb48ac5b445531c3cf3, type: 3}
-    captionText: Help Sonu care for the tree and watch the butterfly grow, from a
-      tiny egg to a beautiful butterfly!
-    displayDuration: 4
+    foregroundSprite: {fileID: 21300000, guid: f02bdb2d77a9ca94ab0c052858a983db, type: 3}
+    captionText: Let's help Sonu find a healthy leaf for the egg to hatch into a
+      caterpillar which turns into a chrysalis which transforms into a beautiful
+      butterfly!
+    fillSlideArea: 1
+    midwayForegroundSprite: {fileID: 21300000, guid: 04964e33c6aa4e24580e604269c0c724, type: 3}
+    midwaySwapAt: 0.5
+    displayDuration: 3
     transitionIn: 0
     transitionOut: 1
     narrationClip: {fileID: 0}

@@ -67,7 +67,16 @@ namespace tmkoc.butterfly
                 storyAnimator?.AnimateSlideIn(slide.transitionIn);
                 float dur = _narration != null ? _narration(_slideIndex) : -1f;
                 if (dur < 2f) dur = Mathf.Max(minimumSlideDuration, slide.displayDuration);
-                yield return new WaitForSeconds(dur + 0.5f);
+                if (slide.midwayForegroundSprite != null)
+                {
+                    // e.g. intro slide 2: Scene 2 -> Scene 3 halfway through the same voice line
+                    float swapAt = dur * slide.midwaySwapAt;
+                    yield return new WaitForSeconds(swapAt);
+                    if (_isSkipped) break;
+                    storyUI?.SwapForeground(slide.midwayForegroundSprite);
+                    yield return new WaitForSeconds(dur - swapAt + 0.5f);
+                }
+                else yield return new WaitForSeconds(dur + 0.5f);
                 if (_isSkipped) break;
                 storyAnimator?.AnimateSlideOut(slide.transitionOut);
                 yield return new WaitForSeconds(0.5f);

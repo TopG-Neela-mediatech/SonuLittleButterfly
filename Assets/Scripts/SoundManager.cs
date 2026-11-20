@@ -77,7 +77,6 @@ namespace tmkoc.butterfly
         public float PlayGoalDelivered() => PlayRandom(audioMapper.goalDelivered);
         public float PlayWrongMove() => PlayRandom(audioMapper.wrongMove);
         public float PlayIdle() => PlayRandom(audioMapper.idle);
-        public float PlayFinalOutro() => PlayKey(new[] { audioMapper.finalOutro }, 0);
         public float PlayGardenMoment(GardenMoment moment)
         {
             string key = moment switch
@@ -113,7 +112,7 @@ namespace tmkoc.butterfly
     public class ButterflyAudioMapper
     {
         [Header("Intro story (one key per slide)")]
-        public string[] storySlides = { "story1", "story2", "story3" };
+        public string[] storySlides = { "story1", "story2" };
         [Header("Stage-end stories")]
         public string[] stage1EndSlides = { "stage1_end1", "stage1_end2" };
         public string[] stage2EndSlides = { "stage2_end1", "stage2_end2" };
@@ -129,7 +128,6 @@ namespace tmkoc.butterfly
         public string[] goalDelivered = { "goal1", "goal2" };
         public string[] wrongMove = { "wrong1", "wrong2" };
         public string[] idle = { "idle1", "idle2" };
-        public string finalOutro = "final_outro";
         [Header("End-of-level garden moments (narrate the caption pill)")]
         public string eggLaid = "egg_laid";
         public string eggHatched = "egg_hatch";

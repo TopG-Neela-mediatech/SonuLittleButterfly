@@ -120,7 +120,6 @@ namespace tmkoc.butterfly
         private void ShowFinalCelebration()
         {
             GameManager.Instance.SoundManager?.PlaySFX(SoundManager.SfxType.Celebrate);
-            GameManager.Instance.SoundManager?.PlayFinalOutro();
             GameManager.Instance.InvokeGameComplete();
             // stars come from the shared save (HelperGameCategoryDataSaver.LevelCompleted), not a game-side wallet credit
             if (finalPanel != null) finalPanel.Show(0, FinishGame);

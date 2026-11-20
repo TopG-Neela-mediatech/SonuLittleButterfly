@@ -3368,6 +3368,8 @@ MonoBehaviour:
   layoutWidth: 1080
   bushHolder: {fileID: 629395430}
   bushZoomOutScale: 0.55
+  bushTopMargin: 210
+  bushPopOvershoot: 1.1
   branchFocusMargin: 20
   zoomInDuration: 2.4
   zoomEase: 4
@@ -12186,7 +12188,6 @@ MonoBehaviour:
     storySlides:
     - story1
     - story2
-    - story3
     stage1EndSlides:
     - stage1_end1
     - stage1_end2
@@ -12219,7 +12220,6 @@ MonoBehaviour:
     idle:
     - idle1
     - idle2
-    finalOutro: final_outro
     eggLaid: egg_laid
     eggHatched: egg_hatch
     caterpillarToBranch: caterpillar_branch

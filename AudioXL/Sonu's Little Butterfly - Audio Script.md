@@ -40,7 +40,7 @@ Scripts
 
 | Key(s) | Plays when | Called from |
 |---|---|---|
-| `story1`-`story3` | Intro story (first time the game starts), one per slide: butterfly, Sonu and Madhavi, the tree | `LevelManager` -> `PlayStorySlide(i)` |
+| `story1`, `story2` | Intro story (first time the game starts), one per slide: the butterfly, then Sonu | `LevelManager` -> `PlayStorySlide(i)` |
 | `water_intro1` | Level 1 (water the leaves) starts | `PlayLevelIntro(Water)` |
 | `leaf_intro1` | Level 2 (feed the caterpillar) starts | `PlayLevelIntro(Leaf)` |
 | `twig_intro1` | Level 3 (grow the branch) starts | `PlayLevelIntro(Twig)` |
@@ -53,24 +53,24 @@ Scripts
 | `chrysalis_form`, `chrysalis_rest`, `chrysalis_move`, `butterfly_emerge` | End of level 3: chrysalis forms, rests, wiggles, the butterfly comes out | `GardenView` |
 | `butterfly_nectar` | End of level 4: the butterfly drinks nectar | `GardenView` |
 | `outro1`, `outro2` | Level complete, after the garden animation (random) | `LevelManager` -> `PlayLevelOutro()` |
-| `stage1_end1`-`stage4_end2` | Story between levels, two slides each | `PlayStageStory(stage, i)` |
-| `final_outro` | Game complete, with the final celebration screen | `PlayFinalOutro()` |
+| `stage1_end1`-`stage4_end2` | Story between levels, two slides each (`stage4_end*` closes the game, before the final celebration screen) | `PlayStageStory(stage, i)` |
+
+Story slides and garden captions show the same words as `voiceover_text`, one caption per clip.
 
 **Lengths:** keep `goal*`, `wrong*` and `idle*` under 2 s. The garden-moment lines play during fixed-length animations, so keep them under 3 s. Story and intro lines can be longer.
 
 **Voice direction:** a warm, cheerful big-sister narrator. Smiling, clear and slow for little ears. Never scolding, even on a wrong move.
 
-### Copy-paste list of every clip name (32)
+### Copy-paste list of every clip name (30)
 
 ```
-story1  story2  story3
+story1  story2
 water_intro1  leaf_intro1  twig_intro1  flower_intro1
 goal1  goal2  wrong1  wrong2  idle1  idle2
 egg_laid  egg_hatch  caterpillar_branch
 chrysalis_form  chrysalis_rest  chrysalis_move  butterfly_emerge  butterfly_nectar
 outro1  outro2
 stage1_end1  stage1_end2  stage2_end1  stage2_end2  stage3_end1  stage3_end2  stage4_end1  stage4_end2
-final_outro
 ```
 
 ---
