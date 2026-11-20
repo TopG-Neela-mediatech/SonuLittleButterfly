@@ -3371,7 +3371,11 @@ MonoBehaviour:
   bushTopMargin: 210
   bushPopOvershoot: 1.1
   branchFocusMargin: 20
-  zoomInDuration: 2.4
+  branchHudClearance: 215
+  branchCreatureHeadroom: 70
+  branchBottomMargin: 30
+  zoomInDuration: 3
+  zoomSlideX: 0.35
   zoomEase: 4
   bushStartScale: 0.7
 --- !u!1 &496018295

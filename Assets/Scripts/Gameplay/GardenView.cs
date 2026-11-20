@@ -13,9 +13,9 @@ namespace tmkoc.butterfly
     ///   3 Chrysalis   - the branch grows longer and sprouts leaves while the caterpillar waits; then chrysalis, days, butterfly.
     ///   4 Butterfly   - water grows the flowering bushes; the butterfly drinks nectar.
     /// Camera: never zooms out. Each level starts on the scene layout and zooms in (PlayIntro); rounds and the level end stay zoomed in.
-    ///   Levels 1-3: the tree (TreeRoot: shadow + tree image + branch) is anchored to the garden's top-left. Its scene layout is the
-    ///   level-start framing (trunk on the left edge, branch across, canopy at the top - the reference mock-up). Zooming in scales it
-    ///   up a little and slides the trunk out to the left until the branch, from the stump to its last leaf, fills the width, centred.
+    ///   Levels 1-3: the tree (TreeRoot: shadow + tree image + branch) is anchored to the garden's top-left. Zoomed in, the branch
+    ///   (stump to last leaf) fills the width, centred, below the level pill / dots. The level starts already at that height,
+    ///   zoomStartScale smaller and a little toward the scene layout's trunk-on-the-left framing; the zoom is a gentle scale-up.
     ///   Level 4: the tree is hidden; the bush holder (anchored bottom-centre) scales up from small to its scene size.
     /// </summary>
     public class GardenView : MonoBehaviour
@@ -79,7 +79,11 @@ namespace tmkoc.butterfly
         [SerializeField] private float branchCreatureHeadroom = 70f;
         [Tooltip("The branch is never pushed lower than this above the bottom of the garden.")]
         [SerializeField] private float branchBottomMargin = 30f;
-        [SerializeField] private float zoomInDuration = 2.4f;
+        [SerializeField] private float zoomInDuration = 3f;
+        [Tooltip("Level start: how far toward the scene layout's trunk-on-the-left framing the tree starts (0 = only scales on the branch, 1 = the full slide).")]
+        [SerializeField, Range(0f, 1f)] private float zoomSlideX = 0.35f;
+        [Tooltip("Level start: tree scale as a fraction of the zoomed-in scale. The zoom grows it from this to 1.")]
+        [SerializeField, Range(0.5f, 1f)] private float zoomStartScale = 0.85f;
         [Tooltip("Ease of the level-start zoom-in (a slow start and a soft landing).")]
         [SerializeField] private Ease zoomEase = Ease.InOutSine;
 
@@ -393,8 +397,21 @@ namespace tmkoc.butterfly
                 return;
             }
             if (tree == null) return;
-            StartTree(out var startScale, out var startPos);
-            ZoomedInTree(startScale, startPos, out var inScale, out var inPos);
+            StartTree(out var sceneScale, out var scenePos);
+            ZoomedInTree(sceneScale, scenePos, out var inScale, out var inPos);
+            float startScale = sceneScale; var startPos = scenePos;
+            if (focusReady)
+            {
+                // The level starts with the tree already down where it plays: the branch sits at its zoomed-in height from the
+                // first frame, a little smaller (zoomStartScale), and only a short way (zoomSlideX) toward the scene layout's
+                // trunk-on-the-left framing. The zoom is then a gentle scale-up with a small sideways drift.
+                var c = branchFocus.center;
+                var inC = inPos + c * inScale;
+                var sceneC = scenePos + c * sceneScale;
+                startScale = inScale * zoomStartScale;
+                var startC = new Vector2(inC.x + (sceneC.x - inC.x) * zoomSlideX, inC.y);
+                startPos = startC - c * startScale;
+            }
             // scale on a log curve so the zoom speed feels even; position follows the same curve
             float k = Mathf.Exp(Mathf.Lerp(Mathf.Log(startScale), Mathf.Log(inScale), t));
             float f = Mathf.Abs(inScale - startScale) > 1e-4f ? (k - startScale) / (inScale - startScale) : t;
