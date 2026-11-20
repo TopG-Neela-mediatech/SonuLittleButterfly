@@ -73,6 +73,12 @@ namespace tmkoc.butterfly
         [SerializeField, Range(1f, 1.3f)] private float bushPopOvershoot = 1.1f;
         [Tooltip("Extra tree-local margin around the branch and its leaves when fitting the zoom-in.")]
         [SerializeField] private float branchFocusMargin = 20f;
+        [Tooltip("Zoomed in (levels 1-3): space kept free at the top of the garden for the level pill and round dots.")]
+        [SerializeField] private float branchHudClearance = 215f;
+        [Tooltip("Extra room above the leaves for the egg / caterpillar / butterfly sitting on them.")]
+        [SerializeField] private float branchCreatureHeadroom = 70f;
+        [Tooltip("The branch is never pushed lower than this above the bottom of the garden.")]
+        [SerializeField] private float branchBottomMargin = 30f;
         [SerializeField] private float zoomInDuration = 2.4f;
         [Tooltip("Ease of the level-start zoom-in (a slow start and a soft landing).")]
         [SerializeField] private Ease zoomEase = Ease.InOutSine;
@@ -447,11 +453,19 @@ namespace tmkoc.butterfly
             var focus = Rect.MinMaxRect(Mathf.Max(branchFocus.xMin, branchStartX), branchFocus.yMin, branchFocus.xMax, branchFocus.yMax);
             float fit = (g.width - 2f * sidePadding) / Mathf.Max(1f, focus.width);
             scale = Mathf.Clamp(fit, startScale, startScale * maxZoomIn);
+            // short, wide gardens (tablets): the branch must also fit between the HUD and the bottom, even if that means less zoom
+            float freeH = g.height - branchHudClearance - branchCreatureHeadroom - branchBottomMargin;
+            if (freeH > 1f) scale = Mathf.Min(scale, freeH / Mathf.Max(1f, branchFocus.height));
             // positions below are measured from the garden's bottom-left; the tree's anchor may be elsewhere (top-left)
             var anchorRef = new Vector2(tree.anchorMin.x * g.width, tree.anchorMin.y * g.height);
             var startPos = startAnchoredPos + anchorRef;
             float branchY = startPos.y + focus.center.y * startScale; // where the branch sits at level start
             var pos = new Vector2(g.width * 0.5f - focus.center.x * scale, branchY - focus.center.y * scale);
+            // keep the branch, every leaf it will grow and the creature sitting on top under the level pill / round dots
+            float maxY = g.height - branchHudClearance - branchCreatureHeadroom - branchFocus.yMax * scale; // top under the HUD
+            float minY = branchBottomMargin - branchFocus.yMin * scale;                                    // bottom inside the garden
+            pos.y = Mathf.Min(pos.y, maxY);
+            pos.y = Mathf.Max(pos.y, Mathf.Min(minY, maxY)); // the HUD wins if both can't be met
             anchoredPos = pos - anchorRef;
         }
 

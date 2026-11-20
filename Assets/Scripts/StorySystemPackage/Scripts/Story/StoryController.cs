@@ -69,7 +69,9 @@ namespace tmkoc.butterfly
                 if (dur < 2f) dur = Mathf.Max(minimumSlideDuration, slide.displayDuration);
                 if (slide.midwayForegroundSprite != null)
                 {
-                    // e.g. intro slide 2: Scene 2 -> Scene 3 halfway through the same voice line
+                    // e.g. intro slide 2: Scene 2 -> Scene 3 halfway through the same voice line.
+                    // Display Duration is the minimum here, so each picture stays up long enough even with a short clip.
+                    dur = Mathf.Max(dur, slide.displayDuration);
                     float swapAt = dur * slide.midwaySwapAt;
                     yield return new WaitForSeconds(swapAt);
                     if (_isSkipped) break;

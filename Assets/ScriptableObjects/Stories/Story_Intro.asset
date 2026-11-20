@@ -33,7 +33,7 @@ MonoBehaviour:
     fillSlideArea: 1
     midwayForegroundSprite: {fileID: 21300000, guid: 04964e33c6aa4e24580e604269c0c724, type: 3}
     midwaySwapAt: 0.5
-    displayDuration: 3
+    displayDuration: 10
     transitionIn: 0
     transitionOut: 1
     narrationClip: {fileID: 0}

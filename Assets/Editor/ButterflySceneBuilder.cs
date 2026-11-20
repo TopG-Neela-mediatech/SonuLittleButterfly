@@ -451,9 +451,9 @@ public static class ButterflySceneBuilder
     {
         if (!AssetDatabase.IsValidFolder(StoryFolder)) AssetDatabase.CreateFolder(SoFolder, "Stories");
         // Captions = voiceover_text in AudioXL (one slide per key). First-time intro: 2 slides = story1, story2 with the full story board scenes;
-        // slide 2 shows Scene 2 and swaps to Scene 3 halfway through story2 (3 s fallback while there is no audio -> swap at 1.5 s).
+        // slide 2 shows Scene 2 and swaps to Scene 3 halfway through story2; each picture stays at least 5 s (10 s slide, swap at 5 s).
         var intro2 = Full(S("Let's help Sonu find a healthy leaf for the egg to hatch into a caterpillar which turns into a chrysalis which transforms into a beautiful butterfly!", scene2));
-        intro2.midwayForegroundSprite = scene3; intro2.midwaySwapAt = 0.5f; intro2.displayDuration = 3f;
+        intro2.midwayForegroundSprite = scene3; intro2.midwaySwapAt = 0.5f; intro2.displayDuration = 10f;
         Story("Story_Intro",
             Full(S("One morning, Sonu spots a beautiful butterfly in Gokuldham garden, looking for a safe leaf to lay her egg.", scene1)),
             intro2);
