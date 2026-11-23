@@ -154,7 +154,7 @@ namespace tmkoc.butterfly
             foreach (var kv in items) if (kv.Value != null) ReleaseView(kv.Value);
             items.Clear();
             if (dragItem != null) { ReleaseView(dragItem); dragItem = null; }
-            foreach (var c in cells) if (c != null) Destroy(c.gameObject);
+            foreach (var c in cells) if (c != null) { c.transform.DOKill(); Destroy(c.gameObject); }
             cells.Clear();
         }
 

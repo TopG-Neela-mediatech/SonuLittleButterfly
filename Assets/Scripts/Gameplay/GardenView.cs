@@ -93,10 +93,18 @@ namespace tmkoc.butterfly
         [Tooltip("Ease of the level-start zoom-in (a slow start and a soft landing).")]
         [SerializeField] private Ease zoomEase = Ease.InOutSine;
 
+        [Header("Background")]
+        [Tooltip("The full-screen background image (BGPanel/BGArt). Levels 1-3 keep its scene sprite.")]
+        [SerializeField] private Image backgroundArt;
+        [Tooltip("Level 4: a background whose lawn starts high (BG_3) so the bushes stand on the grass, not in the sky.")]
+        [SerializeField] private Sprite butterflyStageBackground;
+
         [Header("Flowers (Butterfly stage)")]
         [SerializeField] private float flowerPopDuration = 0.55f;
         [Tooltip("How long the butterfly sips from each flower at the end of level 4.")]
         [SerializeField] private float drinkTime = 0.6f;
+        [Tooltip("Level 4 end: how many flowers the butterfly drinks from (picked evenly from left to right).")]
+        [SerializeField, Min(1)] private int nectarFlowersToDrink = 3;
 
         /// <summary>Where goal items fly to: the thing this stage is caring for.</summary>
         public RectTransform DeliveryTarget
@@ -121,10 +129,13 @@ namespace tmkoc.butterfly
             }
         }
 
+        private Sprite defaultBackground;
         private int bloomed;          // level 4: flowers currently open
         private Vector3[] flowerScales;
         private LifeStage stage;
         private Vector2 butterflyHome;
+        /// <summary>Where the butterfly hovers: its scene spot, but centred horizontally in the nectar level (same height).</summary>
+        private Vector2 ButterflyRest => stage == LifeStage.Butterfly ? new Vector2(0f, butterflyHome.y) : butterflyHome;
         private Vector2 caterpillarHome;
         private Quaternion caterpillarHomeRot = Quaternion.identity;
         private Transform caterpillarHomeParent;
@@ -162,6 +173,7 @@ namespace tmkoc.butterfly
                 flowers = list.ToArray();
             }
             if (butterfly != null) butterflyHome = butterfly.anchoredPosition;
+            if (backgroundArt != null) defaultBackground = backgroundArt.sprite;
             if (flowers != null)
             {
                 flowerScales = new Vector3[flowers.Length];
@@ -210,9 +222,9 @@ namespace tmkoc.butterfly
             {
                 idleTween?.Kill();
                 butterfly.DOKill();
-                butterfly.anchoredPosition = butterflyHome + new Vector2(750f, 420f);
+                butterfly.anchoredPosition = ButterflyRest + new Vector2(750f, 420f);
                 butterfly.localRotation = Quaternion.Euler(0f, 0f, 18f);
-                butterfly.DOAnchorPos(butterflyHome, 1.05f).SetDelay(propDelay).SetEase(Ease.OutSine).OnComplete(StartIdle);
+                butterfly.DOAnchorPos(ButterflyRest, 1.05f).SetDelay(propDelay).SetEase(Ease.OutSine).OnComplete(StartIdle);
                 butterfly.DOLocalRotate(Vector3.zero, 1.05f).SetDelay(propDelay).SetEase(Ease.OutSine);
             }
             Pop(caterpillar, propDelay);
@@ -232,6 +244,11 @@ namespace tmkoc.butterfly
         {
             KillTweens();
             stage = newStage;
+            if (backgroundArt != null)
+            {
+                var bg = stage == LifeStage.Butterfly && butterflyStageBackground != null ? butterflyStageBackground : defaultBackground;
+                if (bg != null && backgroundArt.sprite != bg) backgroundArt.sprite = bg;
+            }
             if (zoomTween == null || !zoomTween.IsActive()) SetZoomInstant(1f); // rounds inside a level stay zoomed in
             // Egg, chrysalis and the mother / emerging butterfly appear only inside the end-of-stage sequences.
             Show(tree, stage != LifeStage.Butterfly); // nectar level: just the bushes
@@ -244,7 +261,7 @@ namespace tmkoc.butterfly
             if (stage != LifeStage.Butterfly) { bloomed = 0; if (flowers != null) foreach (var f in flowers) Show(f, false); }
             if (bushes != null) foreach (var b in bushes) if (b != null) { b.localScale = Vector3.one; b.localRotation = Quaternion.identity; }
             if (nightOverlay != null) nightOverlay.color = new Color(0.1f, 0.12f, 0.3f, 0f);
-            if (butterfly != null) { butterfly.anchoredPosition = butterflyHome; butterfly.localScale = Vector3.one; }
+            if (butterfly != null) { butterfly.anchoredPosition = ButterflyRest; butterfly.localScale = Vector3.one; }
             if (chrysalis != null) { chrysalis.localScale = Vector3.one; chrysalis.localRotation = Quaternion.identity; }
             if (branch != null) branch.localScale = Vector3.one;
             if (egg != null) egg.localScale = Vector3.one;
@@ -667,11 +684,10 @@ namespace tmkoc.butterfly
                     SetFlowers(1f);
                     if (butterfly != null)
                     {
-                        // fly to each flower, land just above its centre, sip (dip + flutter), the flower nods, move on
-                        for (int i = 0; i < flowers.Length; i++)
+                        // fly to a few flowers (left to right), land just above the centre, sip (dip + flutter), the flower nods, move on
+                        foreach (int i in NectarFlowers())
                         {
                             var flower = flowers[i];
-                            if (flower == null) continue;
                             var rest = FlowerRest(i);
                             seq.Append(butterfly.DOMove(flower.TransformPoint(new Vector3(0f, flower.rect.height * 0.45f, 0f)), 0.75f).SetEase(Ease.InOutSine));
                             seq.Append(butterfly.DOMove(flower.TransformPoint(new Vector3(0f, flower.rect.height * 0.25f, 0f)), 0.2f).SetEase(Ease.OutQuad));
@@ -679,8 +695,9 @@ namespace tmkoc.butterfly
                             seq.Join(flower.DOPunchScale(rest * 0.12f, drinkTime, 4, 0.5f));
                             seq.AppendInterval(0.15f);
                         }
-                        seq.Append(butterfly.DOAnchorPos(butterflyHome + new Vector2(0f, 120f), 1f).SetEase(Ease.InOutSine));
-                        seq.Append(butterfly.DOAnchorPos(butterflyHome, 0.8f).SetEase(Ease.InOutSine));
+                        // then up to the top centre of the garden and settle there (same heights as before, centred)
+                        seq.Append(butterfly.DOAnchorPos(ButterflyRest + new Vector2(0f, 120f), 1f).SetEase(Ease.InOutSine));
+                        seq.Append(butterfly.DOAnchorPos(ButterflyRest, 0.8f).SetEase(Ease.InOutSine));
                     }
                     seq.AppendInterval(0.5f);
                     break;
@@ -689,6 +706,23 @@ namespace tmkoc.butterfly
             seq.AppendCallback(() => SetCaption(""));
             seq.AppendInterval(0.5f);
             seq.OnComplete(() => { StartIdle(); done?.Invoke(); });
+        }
+
+        /// <summary>Indices of the flowers the butterfly drinks from: nectarFlowersToDrink of them, evenly spread left to right.</summary>
+        private System.Collections.Generic.List<int> NectarFlowers()
+        {
+            var all = new System.Collections.Generic.List<int>();
+            if (flowers != null) for (int i = 0; i < flowers.Length; i++) if (flowers[i] != null) all.Add(i);
+            all.Sort((a, b) => flowers[a].position.x.CompareTo(flowers[b].position.x));
+            int m = Mathf.Clamp(nectarFlowersToDrink, 1, Mathf.Max(1, all.Count));
+            if (all.Count <= m) return all;
+            var pick = new System.Collections.Generic.List<int>(m);
+            for (int k = 0; k < m; k++)
+            {
+                int idx = m == 1 ? all.Count / 2 : Mathf.RoundToInt(k * (all.Count - 1f) / (m - 1f));
+                if (!pick.Contains(all[idx])) pick.Add(all[idx]);
+            }
+            return pick;
         }
 
         private Tween DayNightCycle(float duration)
@@ -706,8 +740,8 @@ namespace tmkoc.butterfly
             idleTween?.Kill();
             if (butterfly != null && butterfly.gameObject.activeSelf)
             {
-                butterfly.anchoredPosition = butterflyHome;
-                idleTween = butterfly.DOAnchorPosY(butterflyHome.y + 18f, 1.1f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
+                butterfly.anchoredPosition = ButterflyRest;
+                idleTween = butterfly.DOAnchorPosY(ButterflyRest.y + 18f, 1.1f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine);
             }
             else if (caterpillar != null && caterpillar.gameObject.activeSelf)
             {

@@ -31,7 +31,7 @@ namespace tmkoc.butterfly
 
         public void Setup(GoalRequirement[] goals, ThemeData theme, Sprite fallback)
         {
-            foreach (var c in chips) if (c.go != null) Destroy(c.go);
+            foreach (var c in chips) if (c.go != null) { c.go.transform.DOKill(); Destroy(c.go); } // no punch tween left on a destroyed chip
             chips.Clear();
             if (goals == null || chipTemplate == null) return;
             foreach (var g in goals)
