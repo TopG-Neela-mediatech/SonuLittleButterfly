@@ -16,7 +16,8 @@ namespace tmkoc.butterfly
     ///   Levels 1-3: the tree (TreeRoot: shadow + tree image + branch) is anchored to the garden's top-left. Zoomed in, the branch
     ///   (stump to last leaf) fills the width, centred, below the level pill / dots. The level starts already at that height,
     ///   zoomStartScale smaller and a little toward the scene layout's trunk-on-the-left framing; the zoom is a gentle scale-up.
-    ///   Level 4: the tree is hidden; the bush holder (anchored bottom-centre) scales up from small to its scene size.
+    ///   Level 4: the tree is hidden; two big bushes (BushHolder, anchored bottom-centre) are there from the start. Each delivered
+    ///   goal makes the next flower on top of them pop up (3 on one bush, 2 on the other); at the end the butterfly drinks from each.
     /// </summary>
     public class GardenView : MonoBehaviour
     {
@@ -28,7 +29,10 @@ namespace tmkoc.butterfly
         [SerializeField] private RectTransform caterpillar;
         [SerializeField] private RectTransform chrysalis;
         [SerializeField] private RectTransform butterfly;
+        [Tooltip("Level 4: the flowers on top of the bushes, in the order they bloom (one per delivered goal, spread over the rounds).")]
         [SerializeField] private RectTransform[] flowers;
+        [Tooltip("Level 4: the bushes the flowers sit on. Big from the start; they never grow.")]
+        [SerializeField] private RectTransform[] bushes;
         [SerializeField] private Image nightOverlay;
         [SerializeField] private RectTransform deliveryTarget;
         [SerializeField] private TextMeshProUGUI caption;
@@ -60,6 +64,8 @@ namespace tmkoc.butterfly
         [SerializeField] private float sidePadding = 20f;
         [Tooltip("Tree-local x where the branch leaves the trunk (FullTreeNew stump). Zooming in fits from here to the last leaf.")]
         [SerializeField] private float branchStartX = 398f;
+        [Tooltip("Levels 1-3: zoom past 'branch fills the width' by this factor so the leaf and creatures read bigger (the branch tips crop off the sides).")]
+        [SerializeField, Range(1f, 1.6f)] private float branchZoomBoost = 1.15f;
         [Tooltip("Zoom-in never scales the tree more than this times its level-start scale.")]
         [SerializeField] private float maxZoomIn = 1.3f;
         [Tooltip("Garden width the scene layout was made for. Narrower gardens shrink the level-start framing about the top-left anchor.")]
@@ -87,8 +93,10 @@ namespace tmkoc.butterfly
         [Tooltip("Ease of the level-start zoom-in (a slow start and a soft landing).")]
         [SerializeField] private Ease zoomEase = Ease.InOutSine;
 
-        [Header("Bushes (Butterfly stage)")]
-        [SerializeField, Range(0.1f, 1f)] private float bushStartScale = 0.7f;
+        [Header("Flowers (Butterfly stage)")]
+        [SerializeField] private float flowerPopDuration = 0.55f;
+        [Tooltip("How long the butterfly sips from each flower at the end of level 4.")]
+        [SerializeField] private float drinkTime = 0.6f;
 
         /// <summary>Where goal items fly to: the thing this stage is caring for.</summary>
         public RectTransform DeliveryTarget
@@ -101,14 +109,20 @@ namespace tmkoc.butterfly
                     case LifeStage.Caterpillar:
                     case LifeStage.Chrysalis: if (caterpillar != null) return caterpillar; break;
                     case LifeStage.Butterfly:
-                        if (flowers != null && flowers.Length > 0 && flowers[deliveries % flowers.Length] != null) return flowers[deliveries % flowers.Length];
+                        // the spot where the next flower will bloom
+                        if (flowers != null && flowers.Length > 0)
+                        {
+                            var f = flowers[Mathf.Clamp(bloomed, 0, flowers.Length - 1)];
+                            if (f != null) return f;
+                        }
                         break;
                 }
                 return deliveryTarget;
             }
         }
 
-        private int deliveries;
+        private int bloomed;          // level 4: flowers currently open
+        private Vector3[] flowerScales;
         private LifeStage stage;
         private Vector2 butterflyHome;
         private Vector2 caterpillarHome;
@@ -148,6 +162,11 @@ namespace tmkoc.butterfly
                 flowers = list.ToArray();
             }
             if (butterfly != null) butterflyHome = butterfly.anchoredPosition;
+            if (flowers != null)
+            {
+                flowerScales = new Vector3[flowers.Length];
+                for (int i = 0; i < flowers.Length; i++) flowerScales[i] = flowers[i] != null ? flowers[i].localScale : Vector3.one;
+            }
             if (tree != null) { treeInPos = tree.anchoredPosition; treeInScale = tree.localScale; }
             if (bushHolder != null) { bushInPos = bushHolder.anchoredPosition; bushInScale = bushHolder.localScale; }
             if (branchLeaves != null)
@@ -213,7 +232,6 @@ namespace tmkoc.butterfly
         {
             KillTweens();
             stage = newStage;
-            deliveries = 0;
             if (zoomTween == null || !zoomTween.IsActive()) SetZoomInstant(1f); // rounds inside a level stay zoomed in
             // Egg, chrysalis and the mother / emerging butterfly appear only inside the end-of-stage sequences.
             Show(tree, stage != LifeStage.Butterfly); // nectar level: just the bushes
@@ -223,7 +241,8 @@ namespace tmkoc.butterfly
             Show(caterpillar, stage == LifeStage.Caterpillar || stage == LifeStage.Chrysalis);
             Show(chrysalis, false);
             Show(butterfly, stage == LifeStage.Butterfly);
-            if (flowers != null) foreach (var f in flowers) Show(f, stage == LifeStage.Butterfly);
+            if (stage != LifeStage.Butterfly) { bloomed = 0; if (flowers != null) foreach (var f in flowers) Show(f, false); }
+            if (bushes != null) foreach (var b in bushes) if (b != null) { b.localScale = Vector3.one; b.localRotation = Quaternion.identity; }
             if (nightOverlay != null) nightOverlay.color = new Color(0.1f, 0.12f, 0.3f, 0f);
             if (butterfly != null) { butterfly.anchoredPosition = butterflyHome; butterfly.localScale = Vector3.one; }
             if (chrysalis != null) { chrysalis.localScale = Vector3.one; chrysalis.localRotation = Quaternion.identity; }
@@ -272,16 +291,41 @@ namespace tmkoc.butterfly
                     SetBranchFill(1f);
                     SetBranchLeaves(1f, false);
                     SetLeafHealth(1f);
-                    float bush = Mathf.Lerp(bushStartScale, 1f, p);
-                    foreach (var f in flowers)
-                    {
-                        if (f == null) continue;
-                        f.DOKill(true);
-                        if (f.gameObject.activeInHierarchy && bush > f.localScale.x + 0.001f) f.DOScale(bush, 0.5f).SetEase(Ease.OutBack);
-                        else f.localScale = Vector3.one * bush;
-                    }
+                    SetFlowers(p);
                     break;
             }
+        }
+
+        // ---------------------------------------------------------------- flowers (level 4)
+        private Vector3 FlowerRest(int i) => flowerScales != null && i < flowerScales.Length ? flowerScales[i] : Vector3.one;
+
+        /// <summary>One flower per share of the level's progress; a newly opened one pops up out of the bush.</summary>
+        private void SetFlowers(float p)
+        {
+            if (flowers == null || flowers.Length == 0) return;
+            int n = flowers.Length;
+            int open = Mathf.Clamp(Mathf.CeilToInt(p * n - 0.001f), 0, n);
+            bool animate = bushHolder != null && bushHolder.gameObject.activeInHierarchy && open > bloomed && p > 0f;
+            for (int i = 0; i < n; i++)
+            {
+                var f = flowers[i];
+                if (f == null) continue;
+                bool on = i < open;
+                bool newlyOpen = on && i >= bloomed;
+                f.DOKill();
+                f.gameObject.SetActive(on);
+                f.localRotation = Quaternion.identity;
+                if (on && newlyOpen && animate)
+                {
+                    f.localScale = Vector3.zero;
+                    f.DOScale(FlowerRest(i), flowerPopDuration).SetDelay(0.15f).SetEase(Ease.OutBack, 2f);
+                    f.DOLocalRotate(new Vector3(0f, 0f, 360f), flowerPopDuration, RotateMode.FastBeyond360).SetDelay(0.15f).SetEase(Ease.OutCubic);
+                    var at = f;
+                    DOVirtual.DelayedCall(0.15f, () => { if (UiFx.Instance != null && at != null) UiFx.Instance.Play(FxType.Sparkle, at.position); }).SetLink(f.gameObject);
+                }
+                else f.localScale = FlowerRest(i);
+            }
+            bloomed = open;
         }
 
         // ---------------------------------------------------------------- branch
@@ -420,32 +464,48 @@ namespace tmkoc.butterfly
         }
 
         /// <summary>
-        /// Level 4: extra factor (≤1) on the bush holder's scene scale so the fully grown bushes fit the garden:
-        /// within the side padding, and below the level pill / round dots at the top.
+        /// Level 4: extra factor (≤1) on the bush holder's scene scale so the bushes and their open flowers fit the garden:
+        /// every flower inside the side padding (the bushes themselves may run off the edges), and the top under bushTopMargin.
         /// </summary>
         private float BushFit()
         {
-            if (bushHolder == null || flowers == null) return 1f;
-            var holder = bushHolder.rect;
+            if (bushHolder == null) return 1f;
             float xMin = float.MaxValue, xMax = float.MinValue, yMax = float.MinValue;
-            foreach (var f in flowers)
+            float bMin = float.MaxValue, bMax = float.MinValue; // bush span
+            var corners = new Vector3[4];
+            void Grow(RectTransform r, Vector3 restScale, bool width)
             {
-                if (f == null) continue;
-                // flower rect at full growth (scale 1), in the holder's local space
-                var anchorRef = holder.min + Vector2.Scale(f.anchorMin, holder.size);
-                var min = anchorRef + f.anchoredPosition - Vector2.Scale(f.pivot, f.rect.size);
-                xMin = Mathf.Min(xMin, min.x); xMax = Mathf.Max(xMax, min.x + f.rect.width);
-                yMax = Mathf.Max(yMax, min.y + f.rect.height);
+                if (r == null) return;
+                var keep = r.localScale;
+                r.localScale = restScale;
+                r.GetWorldCorners(corners);
+                r.localScale = keep;
+                foreach (var c in corners)
+                {
+                    // holder-local, before the holder's own scale (InverseTransformPoint removes it)
+                    var l = bushHolder.InverseTransformPoint(c);
+                    yMax = Mathf.Max(yMax, l.y);
+                    if (width) { xMin = Mathf.Min(xMin, l.x); xMax = Mathf.Max(xMax, l.x); }
+                    else { bMin = Mathf.Min(bMin, l.x); bMax = Mathf.Max(bMax, l.x); }
+                }
             }
-            if (xMin > xMax) return 1f;
+            if (bushes != null) foreach (var b in bushes) Grow(b, Vector3.one, false);
+            if (flowers != null) for (int i = 0; i < flowers.Length; i++) Grow(flowers[i], FlowerRest(i), true);
+            if (yMax <= float.MinValue) return 1f;
             var g = ((RectTransform)transform).rect;
             float sx = Mathf.Abs(bushInScale.x) * bushPopOvershoot;
             float sy = Mathf.Abs(bushInScale.y) * bushPopOvershoot;
-            // the holder pivots on the garden's bottom-centre: each side must fit half the width
-            float halfW = Mathf.Max(Mathf.Abs(xMin), Mathf.Abs(xMax));
-            float fitW = (g.width * 0.5f - sidePadding) / Mathf.Max(1f, halfW * sx);
+            float fitW = 1f;
+            if (xMin <= xMax)
+            {
+                // the holder pivots on the garden's bottom-centre: each side must fit half the width
+                float halfW = Mathf.Max(Mathf.Abs(xMin), Mathf.Abs(xMax));
+                fitW = (g.width * 0.5f - sidePadding) / Mathf.Max(1f, halfW * sx);
+            }
             float fitH = (g.height - bushTopMargin - bushHolder.anchoredPosition.y) / Mathf.Max(1f, yMax * sy);
-            return Mathf.Clamp(Mathf.Min(fitW, fitH), 0.1f, 1f);
+            // wide gardens (tablets): the bushes may grow past their scene size until they span the whole width
+            float maxFit = bMin < bMax ? Mathf.Max(1f, g.width / ((bMax - bMin) * Mathf.Abs(bushInScale.x))) : 1f;
+            return Mathf.Clamp(Mathf.Min(fitW, fitH), 0.1f, maxFit);
         }
 
         /// <summary>Level-start framing: the scene layout, shrunk about the top-left anchor when the garden is narrower than it was made for.</summary>
@@ -469,7 +529,7 @@ namespace tmkoc.butterfly
             var g = ((RectTransform)transform).rect;
             var focus = Rect.MinMaxRect(Mathf.Max(branchFocus.xMin, branchStartX), branchFocus.yMin, branchFocus.xMax, branchFocus.yMax);
             float fit = (g.width - 2f * sidePadding) / Mathf.Max(1f, focus.width);
-            scale = Mathf.Clamp(fit, startScale, startScale * maxZoomIn);
+            scale = Mathf.Clamp(fit * branchZoomBoost, startScale, startScale * maxZoomIn);
             // short, wide gardens (tablets): the branch must also fit between the HUD and the bottom, even if that means less zoom
             float freeH = g.height - branchHudClearance - branchCreatureHeadroom - branchBottomMargin;
             if (freeH > 1f) scale = Mathf.Min(scale, freeH / Mathf.Max(1f, branchFocus.height));
@@ -505,10 +565,10 @@ namespace tmkoc.butterfly
         /// <summary>Quick pop when a goal item lands in the garden.</summary>
         public void PlayDeliveryPop()
         {
+            // level 4: the flower pops in SetProgress; the bush it grows on gets the wiggle
             RectTransform fed = stage == LifeStage.Egg ? BigLeaf
                 : stage == LifeStage.Caterpillar || stage == LifeStage.Chrysalis ? caterpillar
-                : flowers != null && flowers.Length > 0 ? flowers[deliveries % flowers.Length] : null;
-            deliveries++;
+                : flowers != null && bloomed > 0 && bloomed <= flowers.Length && flowers[bloomed - 1] != null ? flowers[bloomed - 1].parent as RectTransform : null;
             // a wiggle doesn't fight the growth tweens that SetProgress starts on the same object
             if (fed != null && fed.gameObject.activeInHierarchy) fed.DOPunchRotation(new Vector3(0f, 0f, 6f), 0.45f, 6, 0.6f);
         }
@@ -604,15 +664,20 @@ namespace tmkoc.butterfly
                 case LifeStage.Butterfly:
                     SetCaption("The butterfly drinks nectar and flies!");
                     Voice(SoundManager.GardenMoment.ButterflyNectar);
-                    foreach (var f in flowers) Show(f, true);
+                    SetFlowers(1f);
                     if (butterfly != null)
                     {
-                        foreach (var f in flowers)
+                        // fly to each flower, land just above its centre, sip (dip + flutter), the flower nods, move on
+                        for (int i = 0; i < flowers.Length; i++)
                         {
-                            if (f == null) continue;
-                            var flower = f;
-                            seq.Append(butterfly.DOMove(flower.TransformPoint(new Vector3(0f, flower.rect.height * 0.55f, 0f)), 0.7f).SetEase(Ease.InOutSine));
-                            seq.Append(butterfly.DOPunchScale(Vector3.one * 0.15f, 0.35f, 4, 0.5f));
+                            var flower = flowers[i];
+                            if (flower == null) continue;
+                            var rest = FlowerRest(i);
+                            seq.Append(butterfly.DOMove(flower.TransformPoint(new Vector3(0f, flower.rect.height * 0.45f, 0f)), 0.75f).SetEase(Ease.InOutSine));
+                            seq.Append(butterfly.DOMove(flower.TransformPoint(new Vector3(0f, flower.rect.height * 0.25f, 0f)), 0.2f).SetEase(Ease.OutQuad));
+                            seq.Join(butterfly.DOPunchScale(new Vector3(0.18f, -0.1f, 0f), drinkTime, 5, 0.6f));
+                            seq.Join(flower.DOPunchScale(rest * 0.12f, drinkTime, 4, 0.5f));
+                            seq.AppendInterval(0.15f);
                         }
                         seq.Append(butterfly.DOAnchorPos(butterflyHome + new Vector2(0f, 120f), 1f).SetEase(Ease.InOutSine));
                         seq.Append(butterfly.DOAnchorPos(butterflyHome, 0.8f).SetEase(Ease.InOutSine));

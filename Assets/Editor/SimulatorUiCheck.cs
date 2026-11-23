@@ -22,7 +22,7 @@ public static class SimulatorUiCheck
     // HUD elements that must not overlap each other (paths under MainCanvas).
     static readonly string[] HudPaths =
     {
-        "BGPanel/PlaySchoolBackButton",
+        "PlaySchoolBackButton",
         "LevelMain/Level1/GardenView/RestartButton",
         "LevelMain/Level1/GardenView/LevelPill",
         "LevelMain/Level1/GardenView/RoundDots",

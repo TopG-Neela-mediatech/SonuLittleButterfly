@@ -39,6 +39,11 @@ namespace tmkoc.butterfly
         [SerializeField] private Color mergeRingColor = new Color(1f, 0.92f, 0.55f, 0.9f);
         [SerializeField] private Color wrongFlashColor = new Color(1f, 0.62f, 0.58f, 1f);
 
+        [Header("Tiles")]
+        [Tooltip("Wooden tiles in a soft checker pattern.")]
+        [SerializeField] private Color cellColorA = new Color(0.89f, 0.76f, 0.6f, 1f);
+        [SerializeField] private Color cellColorB = new Color(0.84f, 0.7f, 0.53f, 1f);
+
         public event Action<int, int> OnMerged;          // (newTier, cellIndex)
         public event Action OnInvalidMove;
         public event Action OnMoved;
@@ -183,6 +188,8 @@ namespace tmkoc.butterfly
                 cell.gameObject.SetActive(true);
                 cell.name = "Cell_" + i;
                 cell.Bind(this, i);
+                var bg = cell.GetComponent<Image>();
+                if (bg != null) bg.color = ((i / cols) + (i % cols)) % 2 == 0 ? cellColorA : cellColorB;
                 cells.Add(cell);
             }
         }
